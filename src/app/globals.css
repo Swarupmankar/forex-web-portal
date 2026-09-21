@@ -1,0 +1,81 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+
+html, body {
+  font-family: var(--mm-font-body);
+  background-color: var(--mm-bg);
+  color: var(--mm-ink);
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  user-select: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* App Glassmorphism Effects */
+.glass-header {
+  backdrop-filter: blur(12px);
+  background-color: color-mix(in srgb, var(--mm-surface) 85%, transparent);
+  border-bottom: 1px solid var(--mm-hairline);
+}
+
+.glass-card {
+  backdrop-filter: blur(16px) saturate(180%);
+  background-color: color-mix(in srgb, var(--mm-surface) 90%, transparent);
+  border: 1px solid var(--mm-hairline);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--mm-ink-3) 40%, transparent);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--mm-ink-3) 80%, transparent);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Price Flash Animations */
+@keyframes flashGreen {
+  0% { background-color: rgba(111, 224, 143, 0.35); color: #6fe08f; }
+  100% { background-color: transparent; }
+}
+
+@keyframes flashRed {
+  0% { background-color: rgba(255, 123, 123, 0.35); color: #ff7b7b; }
+  100% { background-color: transparent; }
+}
+
+.animate-flash-green {
+  animation: flashGreen 0.6s ease-out;
+}
+
+.animate-flash-red {
+  animation: flashRed 0.6s ease-out;
+}
+
+/* Button & Chip Pill Styles */
+.mm-pill-btn {
+  border-radius: var(--mm-radius-pill);
+  font-weight: 600;
+  transition: all var(--mm-dur-fast) var(--mm-ease);
+}

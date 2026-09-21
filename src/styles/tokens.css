@@ -1,0 +1,91 @@
+/* Movement Markets — design tokens */
+@font-face {
+  font-family: 'Movement Wordmark';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/montserrat-latin.woff2') format('woff2');
+}
+
+:root {
+  /* ---- 1. PRIMITIVES ---- */
+  --mm-lime-h: 76 100% 47%;       /* #b0f000 signature accent */
+  --mm-lime-deep-h: 76 100% 38%;  /* #8fc400 pressed */
+  --mm-lime-soft-h: 79 100% 85%;  /* #e6ffb0 */
+  --mm-lime-ink-h: 75 90% 25%;   /* #5c7906 */
+
+  --mm-black-h: 0 0% 4.7%;       /* #0c0c0c site background */
+  --mm-ink-h: 216 14% 7%;        /* #0f1114 text */
+  --mm-slate-h: 215 9% 40%;      /* #5d6570 */
+  --mm-slate-lo-h: 215 9% 45%;   /* #68717d */
+  --mm-faint-h: 215 8% 43%;      /* #8b929c */
+  --mm-line-h: 220 26% 91%;      /* #e2e6ee */
+  --mm-paper-h: 0 0% 100%;       /* #ffffff */
+  --mm-mist-h: 216 38% 97%;      /* #f6f8fb */
+  --mm-canvas-h: 210 44% 96%;    /* #f2f6fa */
+
+  /* Dark ramp */
+  --mm-d-surface-h: 0 0% 10.98%;  /* #1c1c1c */
+  --mm-d-surface2-h: 0 0% 8.62%;  /* #161616 */
+  --mm-d-line-h: 0 0% 14.9%;      /* #262626 */
+  --mm-d-ink-h: 0 0% 95.68%;     /* #f4f4f4 */
+  --mm-d-slate-h: 0 0% 69%;       /* #b0b0b0 */
+  --mm-d-faint-h: 0 0% 54.1%;     /* #8a8a8a */
+
+  /* Market direction */
+  --mm-up-h: 146 67% 30%;        /* light mode green */
+  --mm-down-h: 0 64% 52%;        /* light mode red */
+  --mm-d-up-h: 137 65% 66%;      /* dark mode green #6fe08f */
+  --mm-d-down-h: 0 100% 74%;     /* dark mode red #ff7b7b */
+  --mm-warn-h: 32 92% 50%;       /* warning amber */
+
+  /* Typography */
+  --mm-font-display: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
+  --mm-font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --mm-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Shapes */
+  --mm-radius-pill: 999px;
+  --mm-radius-panel: 16px;
+  --mm-radius-card: 14px;
+  --mm-radius-well: 12px;
+  --mm-radius-field: 8px;
+  --mm-radius-chip: 6px;
+
+  /* Transitions */
+  --mm-ease: cubic-bezier(.2, .7, .2, 1);
+  --mm-dur-fast: .18s;
+  --mm-dur: .25s;
+}
+
+/* Light Theme Variables */
+:root, [data-mm-theme='light'] {
+  --mm-bg: hsl(var(--mm-canvas-h));
+  --mm-surface: hsl(var(--mm-paper-h));
+  --mm-surface-2: hsl(var(--mm-mist-h));
+  --mm-ink: hsl(var(--mm-ink-h));
+  --mm-ink-2: hsl(var(--mm-slate-lo-h));
+  --mm-ink-3: hsl(var(--mm-faint-h));
+  --mm-hairline: hsl(var(--mm-line-h));
+
+  --mm-accent: hsl(var(--mm-lime-h));
+  --mm-on-accent: hsl(var(--mm-ink-h));
+  --mm-pos: hsl(var(--mm-up-h));
+  --mm-neg: hsl(var(--mm-down-h));
+}
+
+/* Dark Theme Variables */
+[data-mm-theme='dark'], .dark {
+  --mm-bg: hsl(var(--mm-black-h));
+  --mm-surface: hsl(var(--mm-d-surface-h));
+  --mm-surface-2: hsl(var(--mm-d-surface2-h));
+  --mm-ink: hsl(var(--mm-d-ink-h));
+  --mm-ink-2: hsl(var(--mm-d-slate-h));
+  --mm-ink-3: hsl(var(--mm-d-faint-h));
+  --mm-hairline: hsl(var(--mm-d-line-h));
+
+  --mm-accent: hsl(var(--mm-lime-h));
+  --mm-on-accent: hsl(var(--mm-ink-h));
+  --mm-pos: hsl(var(--mm-d-up-h));
+  --mm-neg: hsl(var(--mm-d-down-h));
+}
