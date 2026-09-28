@@ -1,209 +1,218 @@
-'use client';
-
-import React, { useState, useEffect } from 'react';
-import { useUIStore } from '@/store/useUIStore';
-import { 
-  useLoginTradingMutation, 
-  useGetBrokersQuery, 
-  useGetServersQuery 
-} from '@/store/api/tradingApi';
-import { X, ShieldCheck, Server, Building2, Key, UserCheck, Loader2, AlertCircle } from 'lucide-react';
-
-export const LoginModal: React.FC = () => {
-  const { loginModalOpen, setLoginModalOpen, setIsAuthenticated, setTradingAccountNo } = useUIStore();
-
-  // Form State
-  const [accountNumber, setAccountNumber] = useState('');
-  const [password, setPassword] = useState('');
-  const [selectedBroker, setSelectedBroker] = useState<string>('');
-  const [selectedServer, setSelectedServer] = useState<string>('');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // Fetch Brokers & Servers from Backend APIs
-  const { data: brokersRes, isLoading: isLoadingBrokers } = useGetBrokersQuery(undefined);
-  const { data: serversRes, isLoading: isLoadingServers } = useGetServersQuery(undefined);
-  
-  const [loginTrading, { isLoading: isLoggingIn }] = useLoginTradingMutation();
-
-  // Extract arrays from API response objects (backend returns { brokers: [...] }, { servers: [...] })
-  const brokersList: any[] = Array.isArray(brokersRes) 
-    ? brokersRes 
-    : (brokersRes as any)?.brokers || [
-        { id: 1, name: 'Movement Markets Brokerage' },
-        { id: 2, name: 'Xpert Trader Global' },
-      ];
-
-  const serversList: any[] = Array.isArray(serversRes) 
-    ? serversRes 
-    : (serversRes as any)?.servers || [
-        { id: 1, name: 'Live-Server-US-01' },
-        { id: 2, name: 'Demo-Server-EU-01' },
-      ];
-
-  // Set default selection when brokers/servers load
+"use client";
+import { useState, useEffect, useMemo } from "react";
+import { ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { useUIStore } from "@/store/useUIStore";
+import { useWorkspaceStore } from "@/store/useWorkspaceStore";
+import {
+  useLoginTradingMutation,
+  useGetBrokersQuery,
+  useGetServersQuery,
+} from "@/store/api/tradingApi";
+import { useAccountStore } from '@/store/useAccountStore';
+import { switchTradingAccount } from '@/lib/accountSwitching';
+import { Dialog } from "@/components/terminal/Dialog";
+import { Brand } from "@/components/terminal/Brand";
+import { CLIENT_PORTAL, errorMessage } from "@/lib/market";
+export function LoginModal() {
+  const u = useUIStore();
+  const [account, setAccount] = useState(""),
+    [password, setPassword] = useState(""),
+    [broker, setBroker] = useState(""),
+    [server, setServer] = useState(""),
+    [error, setError] = useState(""),
+    [show, setShow] = useState(false);
+  const brokers = useGetBrokersQuery(undefined, { skip: !u.loginModalOpen }),
+    servers = useGetServersQuery(broker, {
+      skip: !u.loginModalOpen || !broker,
+    });
+  const [login, { isLoading }] = useLoginTradingMutation();
+  const brokerList = useMemo(
+    () =>
+      Array.isArray(brokers.data) ? brokers.data : brokers.data?.brokers || [],
+    [brokers.data],
+  );
+  const serverList = useMemo(
+    () =>
+      Array.isArray(servers.currentData)
+        ? servers.currentData
+        : servers.currentData?.servers || [],
+    [servers.currentData],
+  );
+  // Reconnecting an expired account: only the password needs to be entered again.
   useEffect(() => {
-    if (brokersList.length > 0 && !selectedBroker) {
-      setSelectedBroker(String(brokersList[0].id));
-    }
-  }, [brokersList, selectedBroker]);
-
+    if (!u.loginModalOpen || !u.reconnect) return;
+    setAccount(u.reconnect.username);
+    if (u.reconnect.brokerId) setBroker(u.reconnect.brokerId);
+    if (u.reconnect.serverId) setServer(u.reconnect.serverId);
+  }, [u.loginModalOpen, u.reconnect]);
   useEffect(() => {
-    if (serversList.length > 0 && !selectedServer) {
-      setSelectedServer(String(serversList[0].id));
-    }
-  }, [serversList, selectedServer]);
-
-  if (!loginModalOpen) return null;
-
-  const handleLoginSubmit = async (e: React.FormEvent) => {
+    if (brokerList.length && !broker) setBroker(String(brokerList[0].id));
+  }, [brokerList, broker]);
+  useEffect(() => {
+    if (serverList.length && !server) setServer(String(serverList[0].id));
+  }, [serverList, server]);
+  if (!u.loginModalOpen) return null;
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setErrorMessage(null);
-
-    if (!accountNumber || !password) {
-      setErrorMessage('Please enter trading account username and password');
-      return;
-    }
-
+    setError("");
+    if (!broker || !server || !account.trim() || !password) return;
     try {
-      const res = await loginTrading({
-        tradingUsername: accountNumber,
+      const r = await login({
+        tradingUsername: account.trim(),
         tradingPassword: password,
-        brokerId: Number(selectedBroker) || 1,
-        serverId: Number(selectedServer) || 1,
+        brokerId: Number(broker),
+        serverId: Number(server),
       }).unwrap();
-
-      const token = res?.tokens?.access?.token || res?.token || res?.account?.token;
-      if (token) {
-        localStorage.setItem('trading_token', token);
-      }
-      const accId = String(res?.account?.tradingUsername || res?.account?.id || accountNumber);
-      localStorage.setItem('trading_account_no', accId);
-      
-      setIsAuthenticated(true);
-      setTradingAccountNo(accId);
-      setLoginModalOpen(false);
-    } catch (err: any) {
-      const msg = err?.data?.message || err?.message || 'Failed to authenticate trading account';
-      setErrorMessage(msg);
+      const selectedBroker = brokerList.find((b: any) => String(b.id) === broker);
+      const selectedServer = serverList.find((s: any) => String(s.id) === server);
+      const id = useAccountStore.getState().connect(r, {
+        username: account.trim(), brokerId: broker, serverId: server,
+        brokerName: selectedBroker?.name || selectedBroker?.brokerName || '',
+        serverName: selectedServer?.name || selectedServer?.serverName || '',
+      });
+      switchTradingAccount(id);
+      u.setLoginModalOpen(false);
+      setPassword("");
+      useWorkspaceStore.getState().notify("Trading account connected.");
+    } catch (err) {
+      setError(
+        errorMessage(
+          err,
+          "Could not connect. Check your trading credentials and try again.",
+        ),
+      );
     }
-  };
-
+  }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-fade-in select-none">
-      <div className="w-[430px] glass-card rounded-2xl p-6 border border-[var(--mm-hairline)] shadow-2xl relative">
-        {/* Close Button */}
-        <button
-          onClick={() => setLoginModalOpen(false)}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-[var(--mm-ink-2)] hover:text-[var(--mm-ink)] hover:bg-[var(--mm-surface-2)] transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        {/* Modal Header */}
-        <div className="flex items-center gap-3 pb-4 border-b border-[var(--mm-hairline)]">
-          <div className="w-10 h-10 rounded-xl bg-[var(--mm-accent)] text-black flex items-center justify-center font-bold shadow-[0_0_15px_rgba(176,240,0,0.4)]">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-[var(--mm-ink)]">Trading Account Login</h3>
-            <p className="text-xs text-[var(--mm-ink-2)]">Connect with your broker and server credentials</p>
-          </div>
+    <Dialog
+      title="Connect trading account"
+      onClose={() => {
+        if (!isLoading) {
+          u.setLoginModalOpen(false);
+          setPassword("");
+          setError("");
+        }
+      }}
+    >
+      <div className="login-brand">
+        <Brand />
+      </div>
+      <p className="muted">
+        Connect a Real or Demo account using its trading credentials. You can then switch accounts from the top bar.
+      </p>
+      <form className="login-form" onSubmit={submit}>
+        <div className="form-row">
+          <label>
+            Broker
+            <select
+              value={broker}
+              required
+              onChange={(e) => {
+                setBroker(e.target.value);
+                setServer("");
+              }}
+              disabled={brokers.isFetching}
+            >
+              <option value="">
+                {brokers.isFetching ? "Loading…" : "Choose broker"}
+              </option>
+              {brokerList.map((b: any) => (
+                <option key={b.id} value={b.id}>
+                  {b.name || b.brokerName}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Server
+            <select
+              value={server}
+              required
+              onChange={(e) => setServer(e.target.value)}
+              disabled={servers.isFetching || !broker}
+            >
+              <option value="">
+                {servers.isFetching ? "Loading…" : "Choose server"}
+              </option>
+              {serverList.map((s: any) => (
+                <option key={s.id} value={s.id}>
+                  {s.name || s.serverName}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
-
-        {/* Error Banner */}
-        {errorMessage && (
-          <div className="mt-4 p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{errorMessage}</span>
-          </div>
+        {(brokers.isError || servers.isError) && (
+          <p className="form-error" role="alert">
+            Connection settings couldn’t load.{" "}
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => {
+                brokers.refetch();
+                if (broker) servers.refetch();
+              }}
+            >
+              Retry
+            </button>
+          </p>
         )}
-
-        {/* Login Existing Account Form */}
-        <form onSubmit={handleLoginSubmit} className="mt-4 space-y-3.5">
-          {/* Broker Dropdown */}
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-[var(--mm-ink-2)] flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-[var(--mm-accent)]" /> Broker
-              </span>
-              {isLoadingBrokers && <Loader2 className="w-3 h-3 animate-spin text-[var(--mm-accent)]" />}
-            </label>
-            <select
-              value={selectedBroker}
-              onChange={(e) => setSelectedBroker(e.target.value)}
-              className="w-full bg-[var(--mm-surface-2)] border border-[var(--mm-hairline)] text-xs font-semibold py-2 px-3 rounded-xl text-[var(--mm-ink)] focus:outline-none focus:border-[var(--mm-accent)]"
-            >
-              {brokersList.map((b: any) => (
-                <option key={b.id || b.name} value={b.id} className="bg-[var(--mm-surface-2)] text-[var(--mm-ink)]">
-                  {b.name || b.brokerName || `Broker #${b.id}`}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Server Dropdown */}
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-[var(--mm-ink-2)] flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <Server className="w-3.5 h-3.5 text-[var(--mm-accent)]" /> Execution Server
-              </span>
-              {isLoadingServers && <Loader2 className="w-3 h-3 animate-spin text-[var(--mm-accent)]" />}
-            </label>
-            <select
-              value={selectedServer}
-              onChange={(e) => setSelectedServer(e.target.value)}
-              className="w-full bg-[var(--mm-surface-2)] border border-[var(--mm-hairline)] text-xs font-semibold py-2 px-3 rounded-xl text-[var(--mm-ink)] focus:outline-none focus:border-[var(--mm-accent)]"
-            >
-              {serversList.map((s: any) => (
-                <option key={s.id || s.name} value={s.id} className="bg-[var(--mm-surface-2)] text-[var(--mm-ink)]">
-                  {s.name || s.serverName || `Server #${s.id}`}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Account Username / ID */}
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-[var(--mm-ink-2)] flex items-center gap-1.5">
-              <UserCheck className="w-3.5 h-3.5 text-[var(--mm-accent)]" /> Trading Account Username
-            </label>
+        <label>
+          Trading account ID
+          <input
+            autoComplete="username"
+            value={account}
+            onChange={(e) => setAccount(e.target.value)}
+            placeholder="Your trading username"
+            required
+          />
+        </label>
+        <label>
+          Trading password
+          <div className="password-field">
             <input
-              type="text"
-              required
-              placeholder="Enter account ID (e.g. 8849201)"
-              value={accountNumber}
-              onChange={(e) => setAccountNumber(e.target.value)}
-              className="w-full bg-[var(--mm-surface-2)] border border-[var(--mm-hairline)] text-xs font-mono font-bold py-2 px-3 rounded-xl text-[var(--mm-ink)] focus:outline-none focus:border-[var(--mm-accent)] placeholder-[var(--mm-ink-3)]"
-            />
-          </div>
-
-          {/* Password */}
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-[var(--mm-ink-2)] flex items-center gap-1.5">
-              <Key className="w-3.5 h-3.5 text-[var(--mm-accent)]" /> Trading Password
-            </label>
-            <input
-              type="password"
-              required
-              placeholder="Enter password"
+              autoComplete="current-password"
+              type={show ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-[var(--mm-surface-2)] border border-[var(--mm-hairline)] text-xs font-mono py-2 px-3 rounded-xl text-[var(--mm-ink)] focus:outline-none focus:border-[var(--mm-accent)] placeholder-[var(--mm-ink-3)]"
+              required
             />
-          </div>
-
-          {/* Submit CTA */}
-          <div className="pt-3">
             <button
-              type="submit"
-              disabled={isLoggingIn}
-              className="w-full py-3 rounded-xl bg-[var(--mm-accent)] hover:brightness-110 text-black font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(176,240,0,0.3)] cursor-pointer"
+              type="button"
+              className="icon-button"
+              aria-label={show ? "Hide password" : "Show password"}
+              onClick={() => setShow(!show)}
             >
-              {isLoggingIn ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Login Account'}
+              {show ? <EyeOff /> : <Eye />}
             </button>
           </div>
-        </form>
-      </div>
-    </div>
+        </label>
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
+        <button
+          type="submit"
+          className="button button-primary full-width"
+          disabled={isLoading || !server || !broker}
+        >
+          {isLoading ? "Connecting…" : !broker || !server ? "Loading servers…" : "Connect account"}
+          <ArrowRight />
+        </button>
+        <p className="helper">
+          <ShieldCheck /> Your client-portal password may differ from your
+          trading password.
+        </p>
+        <p className="session-privacy">Your password is never saved. Connected sessions stay in this terminal tab.</p>
+        <a
+          className="text-button full-width"
+          href={`${CLIENT_PORTAL}/accounts`}
+        >
+          Find your trading accounts
+          <ArrowRight />
+        </a>
+      </form>
+    </Dialog>
   );
-};
+}

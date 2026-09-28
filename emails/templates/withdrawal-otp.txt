@@ -1,0 +1,8 @@
+Enter this code in the withdrawal screen:
+${otp}
+
+Expires in 30 minutes. Verification does not confirm payment completion. Follow the request in Transaction history.
+If you didn’t request a withdrawal, do not share the code. Review your security and contact support through your client portal.
+
+Movement Markets
+https://movementmarkets.com

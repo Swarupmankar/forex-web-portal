@@ -1,0 +1,31 @@
+/* Bar-close countdown: a chip in the price axis column, directly under the last price's label.
+   Colours follow that label (bid line, or the last candle's direction); grey when the quote is stale. */
+.chart-bar-clock {
+  position: absolute;
+  right: 0;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  padding: 0 4px;
+  border-radius: 2px;
+  font: 500 10px/1 Inter, sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  color: #fff;
+  background: var(--trade-up, #16a773);
+}
+.chart-bar-clock.is-down {
+  background: var(--trade-down, #e05260);
+}
+.chart-bar-clock.is-bid {
+  color: var(--mm-surface);
+  background: var(--mm-neg);
+}
+.chart-bar-clock.is-stale {
+  color: var(--mm-surface);
+  background: var(--mm-ink-2);
+}

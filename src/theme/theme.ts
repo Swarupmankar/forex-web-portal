@@ -30,7 +30,7 @@ export function applyTheme(theme: 'light' | 'dark') {
 }
 
 export function useTheme(): ['light' | 'dark', (t: 'light' | 'dark') => void] {
-  const [theme, setLocal] = useState<'light' | 'dark'>(readTheme);
+  const [theme, setLocal] = useState<'light' | 'dark'>('dark');
 
   useEffect(() => {
     listeners.add(setLocal);

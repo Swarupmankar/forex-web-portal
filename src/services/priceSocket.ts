@@ -1,66 +1,95 @@
-import { io, Socket } from 'socket.io-client';
-import { usePriceStore } from '@/store/usePriceStore';
-
-const PRICE_WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'https://mock-ws-chart.onrender.com';
-
+import { io, Socket } from "socket.io-client";
+import { usePriceStore, type RawTick } from "@/store/usePriceStore";
+import { PREVIEW_FEED } from "@/lib/market";
+import { parseFeedTime, recordServerTime, clockOffsetMs } from "@/lib/serverClock";
 let socket: Socket | null = null;
-const subscribedSymbols = new Set<string>();
-
+const subscriptions = new Map<string, number>();
+// Ticks are buffered (latest per symbol) and flushed once per frame, or every 250 ms while the
+// tab is hidden and frames are paused, so a burst of messages costs one store update.
+const pending = new Map<string, RawTick>();
+// Unbatched listeners see every tick synchronously (the chart needs every intrabar high/low).
+const rawListeners = new Set<(tick: RawTick) => void>();
+export function onRawTick(listener: (tick: RawTick) => void) {
+  rawListeners.add(listener);
+  return () => { rawListeners.delete(listener); };
+}
+let flushScheduled = false;
+function flush() {
+  flushScheduled = false;
+  if (!pending.size) return;
+  const batch = [...pending.values()];
+  pending.clear();
+  usePriceStore.getState().applyTicks(batch);
+}
+function scheduleFlush() {
+  if (flushScheduled) return;
+  flushScheduled = true;
+  if (typeof document !== "undefined" && document.visibilityState === "visible") requestAnimationFrame(flush);
+  else setTimeout(flush, 250);
+}
 export const initPriceSocket = () => {
-  if (socket) return socket;
-
-  socket = io(PRICE_WS_URL, {
-    transports: ['websocket'],
+  if (socket || PREVIEW_FEED) return socket;
+  usePriceStore.getState().setConnection("connecting");
+  socket = io(process.env.NEXT_PUBLIC_WS_URL!, {
+    transports: ["websocket"],
     reconnection: true,
-    reconnectionAttempts: Infinity,
+    // Exponential backoff with jitter, so a feed restart isn't hit by every client at once.
     reconnectionDelay: 1000,
+    reconnectionDelayMax: 15000,
+    randomizationFactor: 0.5,
   });
-
-  socket.on('connect', () => {
-    console.log('✅ Price Socket.IO connected');
-    subscribedSymbols.forEach((sym) => {
-      socket?.emit('subscribeSymbol', sym);
-    });
+  socket.io.on("reconnect_attempt", () => usePriceStore.getState().setConnection("connecting"));
+  socket.on("connect", () => {
+    usePriceStore.getState().setConnection("connected");
+    subscriptions.forEach((_, symbol) =>
+      socket?.emit("subscribeSymbol", symbol),
+    );
   });
-
-  socket.on('disconnect', () => {
-    console.warn('⚠️ Price Socket.IO disconnected');
+  socket.on("disconnect", () =>
+    usePriceStore.getState().setConnection("disconnected"),
+  );
+  socket.on("connect_error", () =>
+    usePriceStore.getState().setConnection("disconnected"),
+  );
+  socket.on("price", (msg: unknown) => {
+    if (typeof msg !== "string") return;
+    const [symbol, bid, ask, mid, time] = msg.trim().split(/\s+/);
+    if (!symbol) return;
+    const receivedAt = Date.now();
+    const sourceTs = parseFeedTime(time, receivedAt);
+    if (sourceTs !== undefined) recordServerTime(sourceTs, receivedAt);
+    const tick: RawTick = {
+      symbol,
+      bid: Number(bid),
+      ask: Number(ask),
+      mid: Number(mid),
+      receivedAt,
+      sourceTs,
+      // How much later than usual this quote arrived, once the steady clock offset is removed.
+      lagMs: sourceTs === undefined ? undefined : Math.max(0, receivedAt + clockOffsetMs() - sourceTs),
+    };
+    rawListeners.forEach((listener) => listener(tick));
+    pending.set(symbol, tick);
+    scheduleFlush();
   });
-
-  socket.on('price', (msg: unknown) => {
-    if (typeof msg !== 'string') return;
-    try {
-      // Format: "SYMBOL BID ASK MID TIMESTAMP"
-      const parts = msg.trim().split(' ');
-      if (parts.length >= 3) {
-        const symbol = parts[0];
-        const bid = parseFloat(parts[1]);
-        const ask = parseFloat(parts[2]);
-        const mid = parts[3] ? parseFloat(parts[3]) : undefined;
-        const ts = parts[4] ? parts[4] : Date.now();
-
-        if (!isNaN(bid) && !isNaN(ask)) {
-          usePriceStore.getState().updateTick(symbol, bid, ask, mid, ts);
-        }
-      }
-    } catch (e) {
-      // handle parse error silently
-    }
-  });
-
   return socket;
 };
-
-export const subscribeSymbol = (symbol: string) => {
-  subscribedSymbols.add(symbol);
-  if (socket && socket.connected) {
-    socket.emit('subscribeSymbol', symbol);
-  }
+export const stopPriceSocket = () => {
+  pending.clear();
+  socket?.disconnect();
+  socket = null;
+  usePriceStore.getState().setConnection("disconnected");
 };
-
+export const subscribeSymbol = (symbol: string) => {
+  const count = subscriptions.get(symbol) || 0;
+  subscriptions.set(symbol, count + 1);
+  if (!count && socket?.connected) socket.emit("subscribeSymbol", symbol);
+};
 export const unsubscribeSymbol = (symbol: string) => {
-  subscribedSymbols.delete(symbol);
-  if (socket && socket.connected) {
-    socket.emit('unsubscribeSymbol', symbol);
+  const count = subscriptions.get(symbol) || 0;
+  if (count > 1) subscriptions.set(symbol, count - 1);
+  else {
+    subscriptions.delete(symbol);
+    socket?.emit("unsubscribeSymbol", symbol);
   }
 };

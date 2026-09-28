@@ -29,7 +29,12 @@ export interface PriceTick {
   spread?: number;
   change24h?: number;
   direction?: 'up' | 'down' | 'same';
+  // Local time the quote arrived (ms). Freshness is measured from this.
   timestamp?: number | string;
+  // The feed's own time for the quote (ms), when the feed sends one. Candles are bucketed by this.
+  sourceTs?: number;
+  // How late the quote arrived relative to the feed's clock, after removing the estimated clock offset.
+  lagMs?: number;
 }
 
 export type OrderType = 'BUY' | 'SELL';

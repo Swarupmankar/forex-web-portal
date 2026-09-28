@@ -1,0 +1,10 @@
+Welcome to Movement Markets.
+
+Enter this code in the client portal to verify your email:
+${otp}
+
+This code expires in 30 minutes. Never share it.
+If you didn’t create an account, ignore this email.
+
+Movement Markets
+https://movementmarkets.com

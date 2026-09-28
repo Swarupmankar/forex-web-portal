@@ -1,0 +1,8 @@
+Thanks for joining Movement Markets.
+
+Verify your email: ${verificationEmailUrl}
+
+If you didn’t request this, ignore the email.
+
+Movement Markets
+https://movementmarkets.com
