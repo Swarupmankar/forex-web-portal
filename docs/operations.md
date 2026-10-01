@@ -14,7 +14,37 @@ Server-side behavior of the web terminal: configuration, the trading kill switch
 | `TRADING_ENABLED` | server, legacy | `false` | Used only when `TRADING_MODE` is unset: `true` means `enabled`, anything else means `halted`. |
 | `GIT_COMMIT_SHA` | server + build | `VERCEL_GIT_COMMIT_SHA`, then `dev` | Reported as `version`; also used as Next.js `deploymentId`. |
 | `NEXT_PUBLIC_WS_URL` | public, build time | none | Market-data feed. Its origin is added to CSP `connect-src`. A URL containing `mock-ws` is the development feed. |
+| `NEXT_PUBLIC_CLIENT_PORTAL_URL` | public, build time | `https://my.movementmarkets.com` | The client portal (user panel). Visitors without a session are sent to `<this>/accounts`; links for deposits and account management point here. |
 | `NEXT_PUBLIC_TRADING_ENABLED` | public, legacy | `false` | Build-time UI flag, superseded by `GET /api/trading/status`. |
+
+## Deploying on Vercel
+
+`vercel.json` pins the framework (Next.js), `npm ci` and `npm run build`, and gives the trading proxy a 30 s function limit: the proxy waits up to 25 s for the backend, and a platform timeout below that would cut an order off mid-flight and leave its outcome unknown. `package.json` pins Node 22. `.vercelignore` keeps local `.env*` files out of CLI deploys.
+
+**Project settings → Environment Variables** (Production; mirror them with staging values for Preview):
+
+| Variable | Production value |
+| --- | --- |
+| `BACKEND_URL` | the backend origin, `https`, no path, e.g. `https://aznxt-fx-ts-backend-server-1.onrender.com` |
+| `BACKEND_ALLOWED_HOSTS` | that hostname, e.g. `aznxt-fx-ts-backend-server-1.onrender.com` |
+| `DEPLOY_ENV` | `production` (`staging` for Preview) |
+| `NEXT_PUBLIC_WS_URL` | the production market-data feed (not `mock-ws`, or trading is forced to `halted`) |
+| `NEXT_PUBLIC_CLIENT_PORTAL_URL` | the user panel's URL |
+| `TRADING_MODE` | `halted` until go-live, then `enabled` |
+| `HALTED_SYMBOLS` | empty, or symbols to pause |
+
+`GIT_COMMIT_SHA` is not needed: Vercel provides `VERCEL_GIT_COMMIT_SHA`. `NEXT_PUBLIC_*` values are inlined at build time, so changing one needs a **redeploy**; the server-only values above apply on the next request after Vercel restarts the functions (saving them in the dashboard and redeploying the current build is enough).
+
+**The other two services** must agree with this one:
+
+- User panel (Vercel): `VITE_WEB_TERMINAL_URL` = this deployment's `https` URL (build time, redeploy after changing). Without it the Trade button falls back to the panel's Terminals page.
+- Backend: `REDIS_URL` whenever it runs more than one instance, so a sign-in code issued by one instance can be redeemed on another.
+
+**Region:** put the functions next to the backend (Project settings → Functions → Region). Every terminal request is proxied, so a region far from the backend adds that round trip to every order.
+
+**Rate limits** are counted per function instance (see Rate limiting). Vercel runs several instances under load, so the effective limit is higher than the configured one; add Vercel's firewall rate limiting on `/api/trading/v1/users/trading/web-session/redeem` and the order routes for a global limit.
+
+After the first deploy, check `/api/health` (200), `/api/ready` (200 `ready`), and `/api/trading/status` (`env: production` and the expected `mode`).
 
 ## Kill switch
 

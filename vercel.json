@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build",
+  "functions": {
+    "src/app/api/trading/**/*": { "maxDuration": 30 },
+    "src/app/api/health/**/*": { "maxDuration": 10 },
+    "src/app/api/ready/**/*": { "maxDuration": 10 }
+  }
+}
