@@ -1,5 +1,6 @@
 "use client";
 import { InstrumentIcon } from "@/components/terminal/InstrumentIcon";
+import { PORTAL_SIGN_IN } from "@/lib/portalHandoff";
 import { useEffect, useRef, useState } from "react";
 import {
   ChevronUp,
@@ -383,15 +384,12 @@ export function PositionsTable() {
             </span>
             <div>
               <strong>Your trading activity, in one place.</strong>
-              <p>Connect an account to see your positions and order history.</p>
+              <p>Open a trading account from your client portal to see its positions and order history.</p>
             </div>
-            <button
-              className="text-button"
-              onClick={() => u.setLoginModalOpen(true)}
-            >
-              Connect account
+            <a className="text-button" href={PORTAL_SIGN_IN}>
+              Open from client portal
               <ArrowUpRight />
-            </button>
+            </a>
           </div>
         ) : !practice && fetching.isError ? (
           <div className="empty-state">

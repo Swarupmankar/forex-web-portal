@@ -1,13 +1,14 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, ChevronDown, ArrowUpRight, Plus, LogOut, Wallet, FlaskConical, RefreshCw } from 'lucide-react';
 import { Dialog } from './Dialog';
-import { useAccountStore } from '@/store/useAccountStore';
+import { tradingTokenFor, useAccountStore } from '@/store/useAccountStore';
 import { usePracticeStore } from '@/store/usePracticeStore';
 import { useUIStore } from '@/store/useUIStore';
 import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { switchTradingAccount, disconnectTradingAccount } from '@/lib/accountSwitching';
-import { accountKindLabel } from '@/lib/accountSessions';
+import { PORTAL_SIGN_IN, goToPortalSignIn } from '@/lib/portalHandoff';
+import { accountKindLabel, type TradingAccount } from '@/lib/accountSessions';
 import { practiceMetrics } from '@/lib/practice';
 import { CLIENT_PORTAL, TRADING_ENABLED } from '@/lib/market';
 
@@ -20,6 +21,19 @@ function money(value?: number, currency?: string) {
   try { return value.toLocaleString('en-US', currency ? { style: 'currency', currency } : { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   catch { return value.toFixed(2); }
 }
+// Each listed account's balance is read with that account's own session while the menu is open.
+async function refreshListedBalances(skipId: string) {
+  const { accounts, update, expire } = useAccountStore.getState();
+  await Promise.all(accounts.filter(a => !a.expired && a.id !== skipId).map(async a => {
+    const token = tradingTokenFor(a.id);
+    if (!token) return;
+    try {
+      const r = await fetch('/api/trading/v1/users/trading/account', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+      if (r.status === 401) { if (useAccountStore.getState().activeId !== a.id) expire(a.id); return; }
+      if (r.ok) update(a.id, await r.json());
+    } catch { /* The last known balance stays on screen. */ }
+  }));
+}
 export function AccountSwitcher(summary: AccountSummary) {
   const [open, setOpen] = useState(false), [reset, setReset] = useState(false);
   const { accounts, activeId, hydrated } = useAccountStore();
@@ -31,6 +45,12 @@ export function AccountSwitcher(summary: AccountSummary) {
   const kind = practice ? 'Practice' : active ? accountKindLabel(active.kind) : 'Not connected';
   const name = practice ? 'Practice account' : active?.nickname || active?.username || 'Connect account';
   const currency = practice ? 'USD' : active?.currency;
+  useEffect(() => { if (open) void refreshListedBalances(practice ? '' : activeId); }, [open, practice, activeId]);
+  const groups: [string, TradingAccount[]][] = [
+    ['Real accounts', accounts.filter(a => a.kind === 'real')],
+    ['Demo accounts', accounts.filter(a => a.kind === 'demo')],
+    ['Other accounts', accounts.filter(a => a.kind === 'unknown')],
+  ];
   function choose(id: string) {
     switchTradingAccount(id); setOpen(false);
     useWorkspaceStore.getState().notify(id === 'practice' ? 'Switched to Practice. Your simulated trades are restored.' : 'Account switched. Loading its balances and positions.', 'info');
@@ -54,16 +74,18 @@ export function AccountSwitcher(summary: AccountSummary) {
         <span className="switch-account-copy"><strong>Practice account</strong><small>Saved in this browser · virtual USD</small></span>
         <span className="switch-account-end"><strong>{money(metrics.balance, 'USD')}</strong>{practice && <Check aria-label="Current account"/>}</span>
       </button>
-      {accounts.length > 0 && <div className="account-list-heading"><h3>Connected accounts</h3><span>This terminal tab</span></div>}
-      {accounts.map(a => <div className="connected-account-row" key={a.id}>
-        <button className={`switch-account-row ${!practice && a.id === activeId ? 'is-active' : ''} ${a.expired ? 'is-expired' : ''}`} aria-label={a.expired ? `Reconnect expired account ${a.username}` : `Switch to ${accountKindLabel(a.kind)} account ${a.username}`} aria-pressed={!practice && a.id === activeId} onClick={() => { if (a.expired) { setOpen(false); useUIStore.getState().openReconnect(a); } else choose(a.id); }}>
+      {groups.filter(([, list]) => list.length).map(([title, list]) => <div key={title}>
+      <div className="account-list-heading"><h3>{title}</h3><span>{list.length} {list.length === 1 ? 'account' : 'accounts'}</span></div>
+      {list.map(a => <div className="connected-account-row" key={a.id}>
+        <button className={`switch-account-row ${!practice && a.id === activeId ? 'is-active' : ''} ${a.expired ? 'is-expired' : ''}`} aria-label={a.expired ? `Session ended for ${a.username}. Open it again from the client portal` : `Switch to ${accountKindLabel(a.kind)} account ${a.username}`} aria-pressed={!practice && a.id === activeId} onClick={() => { if (a.expired) goToPortalSignIn(); else choose(a.id); }}>
           <span className="switch-account-icon"><Wallet /></span>
-          <span className="switch-account-copy"><strong>{a.nickname || a.username}<span className={`account-kind-tag is-${a.kind}`}>{accountKindLabel(a.kind)}</span></strong><small>{a.expired ? 'Session expired · Reconnect' : [a.nickname ? a.username : '', a.serverName || a.brokerName, a.currency].filter(Boolean).join(' · ') || 'Trading account'}</small></span>
-          {!practice && a.id === activeId && <Check aria-label="Current account"/>}
+          <span className="switch-account-copy"><strong>{a.nickname || a.username}<span className={`account-kind-tag is-${a.kind}`}>{accountKindLabel(a.kind)}</span></strong><small>{a.expired ? 'Session ended · Open from client portal' : [a.nickname ? a.username : '', a.serverName || a.brokerName, a.leverage ? `1:${a.leverage}` : '', a.currency].filter(Boolean).join(' · ') || 'Trading account'}</small></span>
+          <span className="switch-account-end"><strong>{money(!practice && a.id === activeId ? summary.balance ?? a.balance : a.balance, a.currency)}</strong>{!practice && a.id === activeId && <Check aria-label="Current account"/>}</span>
         </button>
-        <button className="icon-button disconnect-account" aria-label={`Disconnect account ${a.username}`} title="Disconnect this account" onClick={() => disconnectTradingAccount(a.id)}><LogOut /></button>
+        <button className="icon-button disconnect-account" aria-label={`Disconnect account ${a.username}`} title="Disconnect this account" onClick={() => { disconnectTradingAccount(a.id); if (!useAccountStore.getState().accounts.length) goToPortalSignIn(); }}><LogOut /></button>
       </div>)}
-      <button className="connect-account-row" onClick={() => { setOpen(false); useUIStore.getState().setLoginModalOpen(true); }}><Plus /><span>Connect {accounts.length ? 'another' : 'a trading'} account<small>Use your Real or Demo trading credentials</small></span><ChevronDown /></button>
+      </div>)}
+      <a className="connect-account-row" href={PORTAL_SIGN_IN}><Plus /><span>Open another account<small>Choose Trade on any account in your client portal</small></span><ChevronDown /></a>
       <div className="account-switch-footer"><a href={`${CLIENT_PORTAL}/accounts`}>Manage accounts <ArrowUpRight /></a><button onClick={() => { setOpen(false); setReset(true); }}>Practice settings</button></div>
       <p className="session-privacy">Switching clears unfinished orders and turns off one-click trading.</p>
     </Dialog>}

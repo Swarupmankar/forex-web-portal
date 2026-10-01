@@ -17,9 +17,11 @@ Practice is the default mode, with $10,000 of virtual USD and eight instruments.
 
 Market buys fill at ask and sells at bid. Closing uses the opposite quote; P&L includes the spread and USDJPY results convert to USD. Market, limit and stop orders, stop loss/take profit, edit exits, close, cancel, history/CSV and a reset control are available. Practice uses 1:100 leverage, zero commission/swap and a 50% margin stop-out. It is a UI simulator, not a representation of actual execution or costs. Pending and exit orders run only while practice mode is open; no overnight execution is implied. Orders persist in this browser, with no cross-device or multi-tab synchronization guarantee. Practice and connected price alerts are separated.
 
-The top-right account selector opens Practice and connected Real/Demo trading sessions. Connect each broker account once with its trading username/password, broker and server; then switch directly in the menu. The account type is backend-reported and never guessed. Passwords are not saved; tokens are scoped to the terminal tab in session storage. The terminal defaults to Practice on reload, with connected sessions still available in the menu while valid.
+The terminal has no login or sign-up of its own. Users sign in to the client portal and press **Trade** on a trading account; the portal asks the backend (`POST /v1/users/trading/web-session`) for a single-use code valid for 60 seconds and opens the terminal at `/#handoff=<code>`. The terminal strips the code from the URL and redeems it (`POST /v1/users/trading/web-session/redeem`) for a session on every active account of that user, with the chosen one open. Opening the terminal without a code or a session in that tab redirects to `NEXT_PUBLIC_CLIENT_PORTAL_URL/accounts` (behind the portal login). A reload resumes the account the tab had open.
 
-Switching aborts reads and resets account caches, quotes, order drafts and one-click consent. Responses from the previous session cannot populate the next account. Practice positions stay in their separate local store. Backend execution stays disabled independently of the practice engine. Automatic account discovery from the client portal needs a backend session-handoff contract; no portal token is assumed to be a trading token.
+The top-right account selector lists Practice and the user's Real and Demo accounts with their balances, and switches directly. The account type is backend-reported and never guessed. Tokens are scoped to the terminal tab in session storage.
+
+Switching aborts reads and resets account caches, quotes, order drafts and one-click consent. Responses from the previous session cannot populate the next account. Practice positions stay in their separate local store. Backend execution stays disabled independently of the practice engine. The portal session itself never reaches the terminal; only the single-use code does.
 
 Download all six email templates: `/downloads/movement-markets-email-templates.zip`; the preview header also includes a download link.
 
@@ -30,7 +32,7 @@ The integration is aligned with the local React Native source at `/Users/komalpr
 - REST requests pass through the allowlisted same-origin Next route `/api/trading/*` to server-only `BACKEND_URL`.
 - The market-data URL is public by necessity; browsers must connect to it. The app's current `mock-ws-chart.onrender.com` feed is labelled **Development feed**, never silently promoted to production.
 - In Connected mode, chart history comes from the backend `data.quotes` response. Unavailable symbols display a retry/error state, never fabricated history.
-- No financial transactions were performed. Login to the web terminal requires a **trading** account ID/password and its broker/server; the client-portal or Elefin password is not assumed to be the same.
+- No financial transactions were performed. Sign-in happens only in the client portal; the terminal's proxy does not forward the trading-password login route.
 - Connected-account execution is controlled at runtime by `TRADING_MODE` (or the legacy `TRADING_ENABLED`) and enforced by the server proxy before forwarding; `close-only` still allows closing and cancelling. Keep it `halted` until the FIX deployment and staging acceptance are complete.
 - When no streaming URL is configured, clearly labelled illustrative preview data is used, without execution.
 - Browser-local alerts are stored on this device and work only while the terminal is open and quotes arrive. They are not server notifications.
@@ -58,7 +60,7 @@ Never put credentials or API secrets in NEXT_PUBLIC variables. The terminal poll
 - Every order, close and modify carries an `Idempotency-Key`. If the proxy can't confirm the outcome (timeout, lost response), the ticket shows "Confirming…", blocks new orders and polls open orders for up to 30 s, then reports "confirmed #id" or "not found — safe to try again". It never invites a blind retry.
 - The ticket, chart and submit path share one executable quote (account spread markup applied), one volume rule (instrument limits, capped at the proxy's 100 lots / 0.01 steps) and one duplicate/in-flight guard. Orders of 10 lots or more always open a review.
 - Quotes older than 5 s, or arriving more than 2 s late, can't be traded on.
-- A 401 on a background read is confirmed once before the session is treated as expired; the account stays listed as "Session expired · Reconnect" and the order draft is kept. Real accounts lock after 15 minutes without input.
+- A 401 on a background read is confirmed once before the session is treated as expired; the account stays listed as ended and the terminal shows a session-ended screen linking back to the client portal (other accounts still signed in can be continued from there). Real accounts lock after 15 minutes without input.
 
 ## Before production release
 

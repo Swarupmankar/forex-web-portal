@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { PORTAL_SIGN_IN } from "@/lib/portalHandoff";
 import {
   ArrowRight,
   ShieldCheck,
@@ -372,13 +373,10 @@ export function OrderEntry() {
         )}
         {blockedReason && canExecute && <p className="helper ticket-blocked" role="status">{blockedReason}</p>}
         {!practice && !u.isAuthenticated && (
-          <button
-            className="text-button connect-inline"
-            onClick={() => u.setLoginModalOpen(true)}
-          >
-            Connect a trading account
+          <a className="text-button connect-inline" href={PORTAL_SIGN_IN}>
+            Open an account from your client portal
             <ArrowRight />
-          </button>
+          </a>
         )}
         <p className="ticket-disclaimer">
           {practice ? "Simulated prices · no real money or market execution" : "Prices can change. Orders execute at the available market price."}

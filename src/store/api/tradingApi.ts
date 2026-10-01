@@ -1,5 +1,4 @@
 import { useUIStore } from "@/store/useUIStore";
-import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import { tradingToken, useAccountStore } from '@/store/useAccountStore';
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { normalizeInstruments, type TradeRequest } from "@/lib/contracts";
@@ -13,8 +12,8 @@ const API_BASE_URL = "/api/trading";
 
 const rawQuery = fetchBaseQuery({
   baseUrl: API_BASE_URL,
-  prepareHeaders: (headers, { endpoint }) => {
-    if (typeof window !== "undefined" && !['loginTrading', 'getBrokers', 'getServers'].includes(endpoint)) {
+  prepareHeaders: (headers) => {
+    if (typeof window !== "undefined") {
       const token = tradingToken();
       if (token) {
         headers.set("Authorization", `Bearer ${token}`);
@@ -28,7 +27,7 @@ export const tradingApi = createApi({
   reducerPath: "tradingApi",
   baseQuery: async (args, api, extra) => {
     const generation = useAccountStore.getState().generation;
-    const publicRequest = ['loginTrading', 'getBrokers', 'getServers', 'getHistoricalChart'].includes(api.endpoint);
+    const publicRequest = api.endpoint === 'getHistoricalChart';
     const result = await rawQuery(args, api, extra);
     if (!publicRequest && generation !== useAccountStore.getState().generation)
       return { error: { status: 'CUSTOM_ERROR' as const, error: 'Account changed. The previous response was discarded.' } };
@@ -44,17 +43,13 @@ export const tradingApi = createApi({
         if (check.error?.status !== 401) return result;
       }
       const accounts = useAccountStore.getState();
-      const expiring = accounts.accounts.find((a) => a.id === accounts.activeId);
-      // Keep the account listed (marked expired) and keep the order draft; only one-click consent is revoked.
+      // Keep the account listed (marked expired); one-click consent is revoked. A new session
+      // can only come from the client portal, so the terminal shows the session-ended screen.
       accounts.expire(accounts.activeId);
       useUIStore.getState().setOneClickTrading(false);
       useUIStore.getState().setIsAuthenticated(false);
       useUIStore.getState().setTradingAccountNo("");
-      if (expiring) useUIStore.getState().openReconnect(expiring);
-      else useUIStore.getState().setLoginModalOpen(true);
-      useWorkspaceStore
-        .getState()
-        .notify("Your trading session expired. Reconnect to continue — your order ticket was kept.", "warning", { sticky: true });
+      useUIStore.getState().endSession("Your trading session expired. Open the account again from your client portal to continue.");
       api.dispatch(tradingApi.util.resetApiState());
     }
     return result;
@@ -65,52 +60,12 @@ export const tradingApi = createApi({
     "Orders",
     "OrderHistory",
     "Profile",
-    "Brokers",
-    "Servers",
   ],
   endpoints: (builder) => ({
-    // Auth & Accounts
-    loginTrading: builder.mutation({
-      query: (credentials: {
-        tradingUsername: string;
-        tradingPassword: string;
-        brokerId: number | string;
-        serverId: number | string;
-      }) => ({
-        url: "/v1/users/trading/login",
-        method: "POST",
-        body: credentials,
-      }),
-    }),
-    createDemoAccount: builder.mutation({
-      query: (data: {
-        name: string;
-        email: string;
-        phoneNumber: string;
-        password: string;
-        amount?: number;
-        nickname?: string;
-      }) => ({
-        url: "/v1/users/trading/create-demo-account",
-        method: "POST",
-        body: data,
-      }),
-      invalidatesTags: ["Account"],
-    }),
+    // Accounts. Sign-in happens only in the client portal (see lib/portalHandoff).
     getAccountDetails: builder.query({
       query: () => "/v1/users/trading/account",
       providesTags: ["Account"],
-    }),
-
-    // Brokers & Servers
-    getBrokers: builder.query({
-      query: () => "/v1/users/auth/brokers",
-      providesTags: ["Brokers"],
-    }),
-    getServers: builder.query({
-      query: (brokerId: string) =>
-        `/v1/users/auth/servers?brokerId=${encodeURIComponent(brokerId)}`,
-      providesTags: ["Servers"],
     }),
 
     // User Profile
@@ -219,11 +174,7 @@ export const tradingApi = createApi({
 });
 
 export const {
-  useLoginTradingMutation,
-  useCreateDemoAccountMutation,
   useGetAccountDetailsQuery,
-  useGetBrokersQuery,
-  useGetServersQuery,
   useGetUserProfileQuery,
   useGetWatchlistQuery,
   useGetAllStocksQuery,

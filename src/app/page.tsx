@@ -6,7 +6,6 @@ import { TradingChart } from "@/components/Chart/TradingChart";
 import { PositionsTable } from "@/components/PositionsTable/PositionsTable";
 import { OrderEntry } from "@/components/OrderEntry/OrderEntry";
 import { FooterBar } from "@/components/Footer/FooterBar";
-import { LoginModal } from "@/components/Auth/LoginModal";
 import { DepositModal } from "@/components/DepositModal/DepositModal";
 import { WorkspaceTools } from "@/components/terminal/WorkspaceTools";
 import { PanelBoundary } from "@/components/terminal/PanelBoundary";
@@ -25,6 +24,8 @@ import { useAccountStore } from '@/store/useAccountStore';
 import { useAccountMetrics } from "@/hooks/useAccountMetrics";
 import { useTradingStatusPolling } from "@/hooks/useExecutionPolicy";
 import { useInactivityLock } from "@/hooks/useInactivityLock";
+import { startTerminalSession } from "@/lib/portalHandoff";
+import { SessionGate } from "@/components/terminal/SessionGate";
 
 function AccountHeader() {
   const m = useAccountMetrics();
@@ -40,20 +41,21 @@ function AccountFooter() {
 export default function TerminalPage() {
   const generation = useAccountStore(s => s.generation);
   const practice = usePracticeStore(s => s.mode === "practice");
-  const checkAuthSession = useUIStore(s => s.checkAuthSession);
+  const access = useUIStore(s => s.access);
   const symbol = useUIStore(s => s.activeSymbol);
   const panel = useWorkspaceStore((s) => s.panel),
     focus = useWorkspaceStore((s) => s.focusChart),
     activityExpanded = useWorkspaceStore(s => s.activityExpanded),
     alerts = useWorkspaceStore((s) => s.alerts);
   useEffect(() => {
-    checkAuthSession();
-  }, [checkAuthSession]);
+    // A portal Trade link, or this tab's saved session; with neither, back to the portal login.
+    void startTerminalSession();
+  }, []);
   useEffect(() => {
-    if (practice) return;
+    if (practice || access !== "granted") return;
     initPriceSocket();
     return stopPriceSocket;
-  }, [practice, generation]);
+  }, [practice, generation, access]);
   useTradingStatusPolling(true);
   useInactivityLock();
   const alertSymbols = Array.from(
@@ -67,6 +69,7 @@ export default function TerminalPage() {
     return () => symbols.forEach(unsubscribeSymbol);
   }, [alertSymbols]);
   const resetKey = `${practice}:${generation}:${symbol}`;
+  if (access !== "granted") return <SessionGate />;
   return (
     <div
       className={`terminal-app ${focus ? "chart-focused" : ""} ${activityExpanded ? "activity-expanded" : "activity-collapsed"}`}
@@ -83,7 +86,6 @@ export default function TerminalPage() {
       <AccountFooter />
       <PracticeSession />
       <WorkspaceTools />
-      <LoginModal />
       <DepositModal />
     </div>
   );

@@ -3,14 +3,13 @@ import { useEffect } from "react";
 import { usePracticeStore } from "@/store/usePracticeStore";
 import { useAccountStore } from "@/store/useAccountStore";
 import { useUIStore } from "@/store/useUIStore";
-import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import { clearTradingWorkspace } from "@/lib/accountSwitching";
 
 export const INACTIVITY_LOCK_MS = 15 * 60 * 1000;
 const ACTIVITY = ["pointerdown", "keydown", "wheel", "touchstart"] as const;
 
-// Ends a real-money session after 15 minutes without input. Balances and positions disappear
-// with the session, one-click consent is revoked, and continuing needs the trading password.
+// Ends real-money sessions after 15 minutes without input. Balances and positions disappear
+// with the session, one-click consent is revoked, and continuing needs the client portal.
 export function useInactivityLock() {
   const practice = usePracticeStore((s) => s.mode === "practice");
   const activeId = useAccountStore((s) => s.activeId);
@@ -23,13 +22,13 @@ export function useInactivityLock() {
     const check = () => {
       if (Date.now() - last < INACTIVITY_LOCK_MS) return;
       const accounts = useAccountStore.getState();
-      const account = accounts.accounts.find((a) => a.id === accounts.activeId);
-      if (!account) return;
+      if (!accounts.accounts.some((a) => a.id === accounts.activeId)) return;
       clearTradingWorkspace();
-      accounts.expire(account.id);
-      useUIStore.setState({ isAuthenticated: false, tradingAccountNo: "" });
-      useUIStore.getState().openReconnect(account);
-      useWorkspaceStore.getState().notify("Locked after 15 minutes of inactivity. Enter your trading password to continue.", "info", { sticky: true });
+      // Every real account locks, so none can be resumed from the session-ended screen.
+      accounts.accounts.filter((a) => a.kind !== "demo" && !a.expired).forEach((a) => accounts.expire(a.id));
+      if (accounts.activeId) accounts.expire(accounts.activeId);
+      useUIStore.setState({ isAuthenticated: false, tradingAccountNo: "", oneClickTrading: false });
+      useUIStore.getState().endSession("Locked after 15 minutes of inactivity. Open your account again from the client portal to continue.");
     };
     ACTIVITY.forEach((e) => window.addEventListener(e, touch, { passive: true }));
     const timer = setInterval(check, 15000);

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 const { outputText } = ts.transpileModule(readFileSync(new URL('../src/lib/accountSessions.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } });
-const { AccountSessionVault, accountKind, loginSession, accountDetails } = await import('data:text/javascript;base64,' + Buffer.from(outputText).toString('base64'));
+const { AccountSessionVault, accountKind, loginSession, accountDetails, handoffSessions } = await import('data:text/javascript;base64,' + Buffer.from(outputText).toString('base64'));
 const identity = { username: 'qa-100', brokerId: '1', serverId: '1', brokerName: 'Test broker', serverName: 'Test server' };
 const session = (kind, token, serverId = '1') => loginSession({ tokens: { access: { token } }, account: { accountType: kind, baseCurrency: 'USD' } }, { ...identity, serverId });
 test('account identity includes broker, server and trading username', () => {
@@ -100,4 +100,22 @@ test('an expired session keeps its identity, never authenticates, survives reloa
   assert.equal(reloaded.accounts.length, 1);
   assert.equal(reloaded.accounts[0].expired, undefined);
   assert.equal(reloaded.token, 'fresh-token');
+});
+test('client-portal hand-off connects every account and selects the chosen one', () => {
+  const entry = (id, user, type, token, funds) => ({ account: { id, tradingUsername: user, accountType: type, brokerId: 3, serverId: 7, serverName: 'Live 1', brokerName: 'MM', baseCurrency: 'USD', fundsAvailable: funds, leverage: 200 }, tokens: { access: { token } } });
+  const { sessions, activeId } = handoffSessions({ activeAccountId: 12, sessions: [entry(11, 'R-1', 'REAL', 't-real', '1500.25'), entry(12, 'D-1', 'DEMO', 't-demo', '10000')] });
+  assert.equal(sessions.length, 2);
+  assert.equal(activeId, JSON.stringify(['3', '7', 'D-1']));
+  const demo = sessions.find(s => s.account.id === activeId);
+  assert.equal(demo.account.kind, 'demo');
+  assert.equal(demo.account.balance, 10000);
+  assert.equal(demo.account.leverage, 200);
+  assert.equal(sessions[0].account.balance, 1500.25);
+  const vault = new AccountSessionVault();
+  vault.merge(sessions); vault.activate(activeId);
+  assert.equal(vault.token, 't-demo');
+  assert.equal(vault.tokenFor(sessions[0].account.id), 't-real');
+  const restored = new AccountSessionVault(); restored.restore(vault.serialize());
+  assert.equal(restored.accounts.find(a => a.username === 'R-1').balance, 1500.25, 'balance survives a reload');
+  assert.throws(() => handoffSessions({ activeAccountId: 99, sessions: [entry(11, 'R-1', 'REAL', 't', '1')] }), /selected trading account/);
 });

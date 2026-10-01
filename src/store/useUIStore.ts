@@ -47,11 +47,12 @@ interface UIState {
   setOneClickTrading: (enabled: boolean) => void;
   depositModalOpen: boolean;
   setDepositModalOpen: (open: boolean) => void;
-  loginModalOpen: boolean;
-  setLoginModalOpen: (open: boolean) => void;
-  // Pre-fills the login form when an expired account is reconnected.
-  reconnect: { username: string; brokerId: string; serverId: string } | null;
-  openReconnect: (account: { username: string; brokerId: string; serverId: string }) => void;
+  // The terminal has no login of its own. 'checking' until a portal hand-off or a saved tab
+  // session is found; 'ended' when the session expires or locks and the portal must reopen it.
+  access: 'checking' | 'granted' | 'ended';
+  accessMessage: string;
+  grantAccess: () => void;
+  endSession: (message: string) => void;
   profileModalOpen: boolean;
   setProfileModalOpen: (open: boolean) => void;
 
@@ -104,10 +105,10 @@ export const useUIStore = create<UIState>((set, get) => ({
   setOneClickTrading: (enabled) => set({ oneClickTrading: enabled }),
   depositModalOpen: false,
   setDepositModalOpen: (open) => set({ depositModalOpen: open }),
-  loginModalOpen: false,
-  setLoginModalOpen: (open) => set(open ? { loginModalOpen: true } : { loginModalOpen: false, reconnect: null }),
-  reconnect: null,
-  openReconnect: ({ username, brokerId, serverId }) => set({ loginModalOpen: true, reconnect: { username, brokerId, serverId } }),
+  access: 'checking',
+  accessMessage: '',
+  grantAccess: () => set({ access: 'granted', accessMessage: '' }),
+  endSession: (message) => set({ access: 'ended', accessMessage: message, depositModalOpen: false, profileModalOpen: false }),
   profileModalOpen: false,
   setProfileModalOpen: (open) => set({ profileModalOpen: open }),
 
@@ -124,7 +125,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     if (account) {
       set({ isAuthenticated: true, tradingAccountNo: account.username });
     } else {
-      set({ isAuthenticated: false, tradingAccountNo: '', loginModalOpen: false });
+      set({ isAuthenticated: false, tradingAccountNo: '' });
     }
   },
 }));

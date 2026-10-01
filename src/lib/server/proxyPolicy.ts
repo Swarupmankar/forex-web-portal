@@ -39,9 +39,9 @@ export const MESSAGES = {
   rateLimited: "Too many requests. Please wait a moment and try again.",
 } as const;
 
+// Sign-in happens only in the client portal: the terminal has no password login, so
+// neither the login route nor the broker/server pickers it used are forwarded.
 export const READ_PATHS = new Set([
-  "v1/users/auth/brokers",
-  "v1/users/auth/servers",
   "v1/users/trading/account",
   "v1/users/watchlist/added-stocks",
   "v1/users/watchlist/all-stocks",
@@ -51,7 +51,7 @@ export const READ_PATHS = new Set([
   "users/user-profile",
 ]);
 export const MUTATIONS: Record<string, RegExp> = {
-  POST: /^(v1\/users\/trading\/login|v1\/users\/watchlist\/add-stock|v1\/users\/order\/(place-order|exit-order))$/,
+  POST: /^(v1\/users\/trading\/web-session\/redeem|v1\/users\/watchlist\/add-stock|v1\/users\/order\/(place-order|exit-order))$/,
   PATCH: /^v1\/users\/watchlist\/add-favorite$/,
   DELETE: /^v1\/users\/watchlist\/delete-stock\/\d+$/,
   PUT: /^v1\/users\/order\/modify\/\d+$/,
@@ -60,7 +60,9 @@ export const MUTATIONS: Record<string, RegExp> = {
 const PLACE_ORDER = "v1/users/order/place-order";
 const EXIT_ORDER = "v1/users/order/exit-order";
 const MODIFY_PREFIX = "v1/users/order/modify/";
-const LOGIN = "v1/users/trading/login";
+// Client-portal hand-off: a one-time code becomes trading sessions. Rate-limited like a login.
+export const HANDOFF = "v1/users/trading/web-session/redeem";
+const HANDOFF_CODE = /^[A-Za-z0-9_-]{43}$/;
 const SEGMENT = /^[A-Za-z0-9._-]+$/;
 const ORDER_SYMBOL = /^[A-Z0-9._]{3,20}$/;
 const WATCH_SYMBOL = /^[\x21-\x7e]{3,20}$/;
@@ -80,7 +82,7 @@ export function classify(method: string, route: string): { kind: RouteKind } {
     return { kind: READ_PATHS.has(route) ? "read" : "denied" };
   if (!Object.hasOwn(MUTATIONS, method) || !MUTATIONS[method].test(route))
     return { kind: "denied" };
-  if (route === LOGIN) return { kind: "login" };
+  if (route === HANDOFF) return { kind: "login" };
   if (route.startsWith("v1/users/order/")) return { kind: "order" };
   return { kind: "watchlist" };
 }
@@ -101,8 +103,6 @@ const lotStep = (v: unknown): v is number => {
   const steps = Math.round(v * 100);
   return steps >= 1 && Math.abs(v * 100 - steps) < 1e-6;
 };
-const text = (v: unknown, max: number): v is string =>
-  typeof v === "string" && v.trim().length > 0 && v.length <= max;
 const numericId = (v: unknown) =>
   (typeof v === "number" && Number.isSafeInteger(v) && v > 0) ||
   (typeof v === "string" && /^\d{1,20}$/.test(v) && /[1-9]/.test(v));
@@ -149,18 +149,10 @@ function modifyOrder(b: Body): string | null {
   return null;
 }
 
-function login(b: Body): string | null {
-  if (!text(b.tradingUsername, 128)) return "Enter a valid trading account ID.";
-  if (
-    typeof b.tradingPassword !== "string" ||
-    !b.tradingPassword ||
-    b.tradingPassword.length > 128
-  )
-    return "Enter a valid trading password.";
-  const ref = (v: unknown) => finite(v) || text(v, 64);
-  if (!ref(b.brokerId)) return "Choose a broker.";
-  if (!ref(b.serverId)) return "Choose a server.";
-  return null;
+function handoff(b: Body): string | null {
+  return typeof b.code === "string" && HANDOFF_CODE.test(b.code)
+    ? null
+    : "This sign-in link is not valid.";
 }
 
 function watchlistSymbol(b: Body): string | null {
@@ -184,10 +176,7 @@ const SCHEMAS: Record<
   },
   [EXIT_ORDER]: { keys: ["orderId", "exitLotSize"], check: exitOrder },
   modify: { keys: ["cancelOrder", "sl", "tp"], check: modifyOrder },
-  [LOGIN]: {
-    keys: ["tradingUsername", "tradingPassword", "brokerId", "serverId"],
-    check: login,
-  },
+  [HANDOFF]: { keys: ["code"], check: handoff },
   "v1/users/watchlist/add-stock": { keys: ["symbol", "stockId"], check: watchlistSymbol },
   "v1/users/watchlist/add-favorite": { keys: ["symbol", "stockId"], check: watchlistSymbol },
 };

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { AccountSessionVault, loginSession, type AccountLogin, type TradingAccount } from '@/lib/accountSessions';
+import { AccountSessionVault, handoffSessions, loginSession, type AccountLogin, type TradingAccount } from '@/lib/accountSessions';
 const vault = new AccountSessionVault();
 const STORAGE = 'mm-terminal-sessions-v1';
 const snapshot = () => ({ accounts: vault.accounts, activeId: vault.activeId, generation: vault.generation });
@@ -7,6 +7,8 @@ function save() {
   try { sessionStorage.setItem(STORAGE, vault.serialize()); } catch { /* Current tab still works when storage is unavailable. */ }
 }
 export const tradingToken = () => vault.token;
+/** Token for a listed (not necessarily active) account; used only to refresh its balance in the account menu. */
+export const tradingTokenFor = (id: string) => vault.tokenFor(id);
 interface Accounts {
   accounts: TradingAccount[];
   activeId: string;
@@ -14,6 +16,8 @@ interface Accounts {
   hydrated: boolean;
   hydrate: () => void;
   connect: (response: unknown, login: AccountLogin) => string;
+  /** Adds every account from a client-portal hand-off; returns the id of the account the user chose. */
+  connectHandoff: (response: unknown) => string;
   activate: (id: string) => void;
   invalidate: () => void;
   remove: (id: string) => void;
@@ -40,6 +44,10 @@ export const useAccountStore = create<Accounts>((set, get) => ({
   connect: (response, login) => {
     const session = loginSession(response, login);
     vault.add(session); save(); set(snapshot()); return session.account.id;
+  },
+  connectHandoff: response => {
+    const { sessions, activeId } = handoffSessions(response);
+    vault.merge(sessions); vault.activate(activeId); save(); set(snapshot()); return activeId;
   },
   activate: id => { vault.activate(id); save(); set(snapshot()); },
   invalidate: () => { vault.invalidate(); set(snapshot()); },

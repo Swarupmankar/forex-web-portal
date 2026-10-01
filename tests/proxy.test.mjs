@@ -33,7 +33,7 @@ const {
 const PLACE = "v1/users/order/place-order";
 const EXIT = "v1/users/order/exit-order";
 const MODIFY = "v1/users/order/modify/42";
-const LOGIN = "v1/users/trading/login";
+const HANDOFF = "v1/users/trading/web-session/redeem";
 const market = { symbol: "EURUSD", orderType: "BUY", executionType: "MARKET", lotSize: 0.1 };
 const place = (body) => validateBody(PLACE, "POST", body);
 const rejects = (result, pattern) => {
@@ -44,7 +44,7 @@ const rejects = (result, pattern) => {
 test("allowlist classifies reads, logins, orders and watchlist writes; everything else is denied", () => {
   assert.equal(classify("GET", "v1/users/order/orders").kind, "read");
   assert.equal(classify("GET", "users/user-profile").kind, "read");
-  assert.equal(classify("POST", LOGIN).kind, "login");
+  assert.equal(classify("POST", HANDOFF).kind, "login");
   assert.equal(classify("POST", PLACE).kind, "order");
   assert.equal(classify("POST", EXIT).kind, "order");
   assert.equal(classify("PUT", MODIFY).kind, "order");
@@ -57,6 +57,10 @@ test("allowlist classifies reads, logins, orders and watchlist writes; everythin
     ["PUT", "v1/users/order/modify/abc"],
     ["DELETE", MODIFY],
     ["POST", "v1/users/trading/create-demo-account"],
+    // No password login in the terminal: sign-in starts in the client portal.
+    ["POST", "v1/users/trading/login"],
+    ["GET", "v1/users/auth/brokers"],
+    ["GET", "v1/users/auth/servers"],
     ["HEAD", "v1/users/order/orders"],
     ["constructor", PLACE],
     ["GET", ""],
@@ -162,25 +166,6 @@ test("modify schema: cancelOrder required, 0 removes a level", () => {
   rejects(modify({ cancelOrder: false, orderId: 42 }), /Unexpected field: orderId/);
 });
 
-test("trading login schema", () => {
-  const ok = { tradingUsername: "1001", tradingPassword: "secret", brokerId: 1, serverId: "2" };
-  const loginBody = (body) => validateBody(LOGIN, "POST", body);
-  assert.equal(loginBody(ok).ok, true);
-  for (const key of Object.keys(ok)) {
-    const body = { ...ok };
-    delete body[key];
-    rejects(loginBody(body));
-  }
-  rejects(loginBody({ ...ok, tradingUsername: "   " }), /account ID/);
-  rejects(loginBody({ ...ok, tradingUsername: "x".repeat(129) }), /account ID/);
-  rejects(loginBody({ ...ok, tradingPassword: "" }), /password/);
-  rejects(loginBody({ ...ok, tradingPassword: 1234 }), /password/);
-  rejects(loginBody({ ...ok, tradingPassword: "x".repeat(129) }), /password/);
-  rejects(loginBody({ ...ok, brokerId: null }), /broker/);
-  rejects(loginBody({ ...ok, serverId: true }), /server/);
-  rejects(loginBody({ ...ok, remember: true }), /Unexpected field: remember/);
-});
-
 test("watchlist schemas, and routes that take no body", () => {
   for (const [route, method] of [
     ["v1/users/watchlist/add-stock", "POST"],
@@ -259,7 +244,7 @@ test("gate: halted blocks every order route but not reads or watchlist", () => {
     assert.deepEqual(gate("order", route, {}, "halted", []), { ok: false, status: 503, message: MESSAGES.halted });
   assert.deepEqual(gate("read", "v1/users/order/orders", undefined, "halted", []), { ok: true });
   assert.deepEqual(gate("watchlist", "v1/users/watchlist/add-stock", {}, "halted", []), { ok: true });
-  assert.deepEqual(gate("login", LOGIN, {}, "halted", []), { ok: true });
+  assert.deepEqual(gate("login", HANDOFF, {}, "halted", []), { ok: true });
   assert.equal(gate("order", PLACE, market, "bogus", []).ok, false);
 });
 
@@ -372,4 +357,15 @@ test("user-facing messages never invite a blind retry for unconfirmed orders", (
   assert.equal(MESSAGES.unknown, "We couldn't confirm this request. Check your positions before trying again.");
   assert.equal(MESSAGES.halted, "Trading is temporarily unavailable. Your account remains accessible.");
   assert.equal(MESSAGES.closeOnly, "Close-only mode: you can close or reduce positions, but new orders are paused.");
+});
+
+test("client-portal hand-off redeem is allowlisted, rate-limited as a login, and only takes a code", () => {
+  const code = "A".repeat(43);
+  assert.equal(classify("POST", HANDOFF).kind, "login");
+  assert.equal(classify("GET", HANDOFF).kind, "denied");
+  assert.equal(classify("POST", "v1/users/trading/web-session").kind, "denied", "issuing codes needs the portal session, never the terminal");
+  assert.equal(validateBody(HANDOFF, "POST", { code }).ok, true);
+  rejects(validateBody(HANDOFF, "POST", { code: "short" }), /not valid/);
+  rejects(validateBody(HANDOFF, "POST", { code: code.slice(1) + "/" }), /not valid/);
+  rejects(validateBody(HANDOFF, "POST", { code, tradingAccountId: 1 }), /Unexpected field/);
 });

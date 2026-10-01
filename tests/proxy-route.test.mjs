@@ -156,19 +156,19 @@ test("mutations from another origin are 403", async () => {
   assert.equal(calls.length, 0);
 });
 
-test("login is limited to 5 per minute per IP with Retry-After", async () => {
+test("portal sign-in is limited to 5 per minute per IP with Retry-After", async () => {
   const { proxy } = await load();
-  const login = { tradingUsername: "1001", tradingPassword: "pw", brokerId: 1, serverId: 1 };
+  const login = { code: "A".repeat(43) };
   const statuses = [];
   let last;
   for (let i = 0; i < 6; i++) {
-    last = await send(proxy, "POST", "v1/users/trading/login", { body: login, headers: { "x-forwarded-for": "198.51.100.7" } });
+    last = await send(proxy, "POST", "v1/users/trading/web-session/redeem", { body: login, headers: { "x-forwarded-for": "198.51.100.7" } });
     statuses.push(last.status);
   }
   assert.deepEqual(statuses, [200, 200, 200, 200, 200, 429]);
   assert.equal(last.body.outcome, "not_sent");
   assert.ok(Number(last.res.headers.get("retry-after")) >= 1);
-  const other = await send(proxy, "POST", "v1/users/trading/login", { body: login, headers: { "x-forwarded-for": "198.51.100.8" } });
+  const other = await send(proxy, "POST", "v1/users/trading/web-session/redeem", { body: login, headers: { "x-forwarded-for": "198.51.100.8" } });
   assert.equal(other.status, 200);
 });
 
@@ -311,12 +311,12 @@ test("a missing BACKEND_URL is 503 'not configured', halts trading and is logged
 test("one structured log line per request, without query values, bodies or tokens", async () => {
   const { proxy } = await load();
   // Secrets use letters outside the hex alphabet so they cannot collide with a request id.
-  await send(proxy, "GET", "v1/users/auth/servers", { query: "?brokerId=zz-broker", headers: { authorization: "Bearer s3cret-token" } });
-  await send(proxy, "POST", "v1/users/trading/login", { body: { tradingUsername: "user-zz", tradingPassword: "hunter2-pw", brokerId: 1, serverId: 1 } });
+  await send(proxy, "GET", "v1/users/order/orders-history", { query: "?from=zz-broker", headers: { authorization: "Bearer s3cret-token" } });
+  await send(proxy, "POST", "v1/users/trading/web-session/redeem", { body: { code: "hunter2-pw-user-zz".padEnd(43, "Q") } });
   const lines = logs.filter((l) => l.line.includes('"reqId"')).map((l) => JSON.parse(l.line));
   assert.equal(lines.length, 2);
   assert.deepEqual(Object.keys(lines[0]).sort(), ["kind", "method", "ms", "outcome", "reqId", "route", "status", "ts"]);
-  assert.equal(lines[0].route, "v1/users/auth/servers");
+  assert.equal(lines[0].route, "v1/users/order/orders-history");
   assert.equal(lines[1].kind, "login");
   const all = logs.map((l) => l.line).join("\n");
   for (const secret of ["zz-broker", "s3cret", "hunter2", "user-zz"]) assert.ok(!all.includes(secret), secret);
