@@ -1,95 +1,85 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
-import { Activity, Clock } from 'lucide-react';
-
-interface FooterBarProps {
-  equity?: number;
-  freeMargin?: number;
+"use client";
+import { useEffect, useState } from "react";
+import { usePriceStore } from "@/store/usePriceStore";
+import { DEVELOPMENT_FEED, PREVIEW_FEED } from "@/lib/market";
+import { QUOTE_STALE_MS } from "@/lib/freshness";
+import { usePracticeStore } from "@/store/usePracticeStore";
+import { useAccountStore } from '@/store/useAccountStore';
+export function FooterBar({
+  balance,
+  equity,
+  margin,
+  freeMargin,
+  marginLevel,
+}: {
   balance?: number;
+  equity?: number;
   margin?: number;
+  freeMargin?: number;
   marginLevel?: number | null;
-}
-
-export const FooterBar: React.FC<FooterBarProps> = ({
-  equity = 0,
-  freeMargin = 0,
-  balance = 0,
-  margin = 0,
-  marginLevel = null,
-}) => {
-  const [serverTime, setServerTime] = useState<string>('');
-
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setServerTime(now.toTimeString().split(' ')[0]);
-    };
-    updateTime();
-    const timer = setInterval(updateTime, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
+}) {
+  const practice=usePracticeStore(s=>s.mode === "practice");
+  const currency = useAccountStore(s => s.accounts.find(a => a.id === s.activeId)?.currency);
   return (
-    <footer className="h-7 w-full bg-[var(--mm-surface-2)] border-t border-[var(--mm-hairline)] px-3 flex items-center justify-between text-[11px] font-mono text-[var(--mm-ink-2)] select-none z-20 shrink-0">
-      {/* Financial Metrics */}
-      <div className="flex items-center gap-4 overflow-x-auto no-scrollbar">
-        <div>
-          <span>Equity: </span>
-          <span className="font-bold text-[var(--mm-ink)]">${equity.toFixed(2)}</span>
-        </div>
-
-        <div>
-          <span>Free Margin: </span>
-          <span className="font-bold text-[var(--mm-ink)]">${freeMargin.toFixed(2)}</span>
-        </div>
-
-        <div>
-          <span>Balance: </span>
-          <span className="font-bold text-[var(--mm-ink)]">${balance.toFixed(2)}</span>
-        </div>
-
-        <div>
-          <span>Margin: </span>
-          <span className="font-bold text-[var(--mm-ink)]">${margin.toFixed(2)}</span>
-        </div>
-
-        <div>
-          <span>Margin level: </span>
-          <span className="font-bold text-[var(--mm-ink-3)]">{marginLevel ? `${marginLevel}%` : '—'}</span>
-        </div>
+    <footer className="terminal-footer">
+      <div className="account-metrics">
+        {[
+          ["Balance", balance],
+          ["Equity", equity],
+          ["Used margin", margin],
+          ["Free margin", freeMargin],
+          ["Margin level", marginLevel],
+        ].map(([label, value]) => (
+          <div key={String(label)}>
+            <span>{label}</span>
+            <strong>
+              {typeof value === "number"
+                ? value.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  }) + (label === "Margin level" ? "%" : practice ? " USD" : currency ? ` ${currency}` : '')
+                : "—"}
+            </strong>
+          </div>
+        ))}
       </div>
-
-      {/* Market Sessions & Server Clock */}
-      <div className="hidden md:flex items-center gap-3 border-l border-[var(--mm-hairline)] pl-3 text-[10px]">
-        {/* World Market Sessions */}
-        <div className="flex items-center gap-2 text-[var(--mm-ink-3)]">
-          <span className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> SYD
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> TKY
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> LDN
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> NY
-          </span>
-        </div>
-
-        {/* Server Clock */}
-        <div className="flex items-center gap-1 text-[var(--mm-ink)]">
-          <Clock className="w-3 h-3 text-[var(--mm-ink-3)]" />
-          <span>{serverTime || '21:22:57'}</span>
-        </div>
-
-        {/* Latency */}
-        <div className="flex items-center gap-1 text-emerald-400 font-bold">
-          <Activity className="w-3 h-3" />
-          <span>158ms</span>
-        </div>
-      </div>
+      <FeedStatus />
     </footer>
   );
-};
+}
+
+function FeedStatus() {
+  const practice = usePracticeStore(s => s.mode === "practice");
+  const connection = usePriceStore((s) => s.connection),
+    last = usePriceStore((s) => s.lastReceivedAt);
+  const [now, setNow] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    setNow(Date.now());
+    return () => clearInterval(t);
+  }, []);
+  const stale = !!last && now - last > QUOTE_STALE_MS;
+  return (
+      <div className="feed-status">
+        <span
+          className={`status-dot ${(practice || connection === "connected" && !stale) ? "connected" : ""}`}
+        />
+        <span>
+          {practice ? "Practice · simulated prices" : PREVIEW_FEED
+            ? "Preview"
+            : connection === "connected"
+              ? stale
+                ? "Waiting for quotes"
+                : DEVELOPMENT_FEED
+                  ? "Development feed"
+                  : "Connected"
+              : connection === "connecting"
+                ? last ? "Reconnecting…" : "Connecting…"
+                : "Feed disconnected"}
+        </span>
+        <time>
+          {now ? new Date(now).toISOString().slice(11, 19) : "--:--:--"} UTC
+        </time>
+      </div>
+  );
+}

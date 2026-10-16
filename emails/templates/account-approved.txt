@@ -1,0 +1,9 @@
+Your Movement Markets account is approved.
+
+Email: ${email}
+Sign in: https://my.movementmarkets.com/auth
+
+Use your existing password. If needed, use Forgot password on the sign-in page. Passwords are never included in this email.
+
+Movement Markets
+https://movementmarkets.com

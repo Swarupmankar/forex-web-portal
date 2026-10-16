@@ -1,0 +1,14 @@
+Hi ${name},
+
+Your demo trading account is ready.
+Trading account ID: ${tradingAccountId}
+Trading username: ${tradingUsername}
+Broker: ${brokerName}
+Server: ${serverName}
+Demo balance: ${amount}
+
+Platforms: https://my.movementmarkets.com/terminals
+This account uses virtual funds. Demo results do not guarantee future performance.
+
+Movement Markets
+https://movementmarkets.com

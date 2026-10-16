@@ -1,0 +1,8 @@
+# Local settings and build output never ship with `vercel deploy`.
+# Configure environment variables in the Vercel project instead (docs/operations.md).
+.env
+.env.local
+.env.*.local
+.next
+node_modules
+tsconfig.tsbuildinfo

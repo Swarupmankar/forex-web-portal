@@ -1,54 +1,57 @@
-import { create } from 'zustand';
-import { PriceTick } from '@/types/trading';
-
+import { create } from "zustand";
+import { PriceTick } from "@/types/trading";
+export type RawTick = { symbol: string; bid: number; ask: number; mid?: number; sourceTs?: number; lagMs?: number; receivedAt: number };
 interface PriceState {
   prices: Record<string, PriceTick>;
-  updateTick: (symbol: string, bid: number, ask: number, mid?: number, ts?: number | string) => void;
+  connection: "connecting" | "connected" | "disconnected";
+  lastReceivedAt: number;
+  setConnection: (v: PriceState["connection"]) => void;
+  // Applies a batch of ticks in one update, so a burst of socket messages causes one render.
+  applyTicks: (ticks: RawTick[]) => void;
   getTick: (symbol: string) => PriceTick | undefined;
+  // Removes prices the feed says no longer exist (NO_PRICE / FEED_DOWN): blank, never stale.
+  clearPrices: (symbols: string[]) => void;
+  // Marks every held quote as current at `now` (an open feed is silent while nothing changes).
+  touch: (now: number) => void;
 }
-
-// Default initial fallback prices so UI looks populated instantly
-const INITIAL_PRICES: Record<string, PriceTick> = {
-  XAUUSD: { symbol: 'XAUUSD', bid: 4377.85, ask: 4378.11, mid: 4377.98, spread: 26, change24h: 0.03, direction: 'same' },
-  BTCUSD: { symbol: 'BTCUSD', bid: 81153.41, ask: 81160.00, mid: 81156.70, spread: 659, change24h: -0.47, direction: 'same' },
-  ETHUSD: { symbol: 'ETHUSD', bid: 2631.13, ask: 2631.80, mid: 2631.46, spread: 67, change24h: 0.12, direction: 'same' },
-  GBPUSD: { symbol: 'GBPUSD', bid: 1.33942, ask: 1.33955, mid: 1.33948, spread: 13, change24h: 0.03, direction: 'same' },
-  EURUSD: { symbol: 'EURUSD', bid: 1.14843, ask: 1.14854, mid: 1.14848, spread: 11, change24h: 0.01, direction: 'same' },
-  USDJPY: { symbol: 'USDJPY', bid: 156.871, ask: 156.885, mid: 156.878, spread: 14, change24h: 0.13, direction: 'same' },
-  AUDUSD: { symbol: 'AUDUSD', bid: 0.71200, ask: 0.71212, mid: 0.71206, spread: 12, change24h: -0.07, direction: 'same' },
-};
-
 export const usePriceStore = create<PriceState>((set, get) => ({
-  prices: INITIAL_PRICES,
-
-  updateTick: (symbol, bid, ask, mid, ts) => {
-    const current = get().prices[symbol];
-    let direction: 'up' | 'down' | 'same' = 'same';
-
-    if (current && current.bid !== undefined) {
-      if (bid > current.bid) direction = 'up';
-      else if (bid < current.bid) direction = 'down';
-    }
-
-    const calculatedMid = mid ?? Number(((bid + ask) / 2).toFixed(5));
-    const calculatedSpread = Math.round(Math.abs(ask - bid) * 100);
-
-    set((state) => ({
-      prices: {
-        ...state.prices,
-        [symbol]: {
-          symbol,
-          bid,
-          ask,
-          mid: calculatedMid,
-          spread: calculatedSpread,
-          change24h: current?.change24h ?? 0.0,
-          direction,
-          timestamp: ts ?? Date.now(),
-        },
-      },
-    }));
+  prices: {},
+  connection: "disconnected",
+  lastReceivedAt: 0,
+  setConnection: (connection) => set({ connection }),
+  applyTicks: (ticks) => {
+    const valid = ticks.filter((t) => Number.isFinite(t.bid) && Number.isFinite(t.ask) && t.bid > 0 && t.ask >= t.bid);
+    if (!valid.length) return;
+    set((s) => {
+      const prices = { ...s.prices };
+      for (const t of valid) {
+        const previous = prices[t.symbol]?.bid ?? t.bid;
+        prices[t.symbol] = {
+          symbol: t.symbol,
+          bid: t.bid,
+          ask: t.ask,
+          mid: t.mid,
+          timestamp: t.receivedAt,
+          sourceTs: t.sourceTs,
+          lagMs: t.lagMs,
+          direction: t.bid > previous ? "up" : t.bid < previous ? "down" : "same",
+        };
+      }
+      return { prices, lastReceivedAt: Math.max(...valid.map((t) => t.receivedAt)) };
+    });
   },
-
   getTick: (symbol) => get().prices[symbol],
+  clearPrices: (symbols) =>
+    set((s) => {
+      if (!symbols.some((symbol) => symbol in s.prices)) return s;
+      const prices = { ...s.prices };
+      for (const symbol of symbols) delete prices[symbol];
+      return { prices };
+    }),
+  touch: (now) =>
+    set((s) => {
+      const prices: Record<string, PriceTick> = {};
+      for (const [symbol, tick] of Object.entries(s.prices)) prices[symbol] = { ...tick, timestamp: now };
+      return { prices, lastReceivedAt: now };
+    }),
 }));

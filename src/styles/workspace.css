@@ -1,0 +1,401 @@
+/* Terminal workspace. One responsive rule set replaces the successive layout experiments.
+   Colours, wordmark and typefaces match the client and partner portals. */
+.terminal-header {
+  height:72px; flex-shrink:0; display:flex; align-items:center; gap:24px;
+  padding:0 24px; background:var(--mm-surface); border-bottom:1px solid var(--mm-hairline);
+}
+.brand-link {flex-shrink:0}
+.terminal-brand {display:flex; align-items:center; gap:11px; white-space:nowrap}
+.terminal-brand>svg {width:24px; height:auto; aspect-ratio:456/495}
+.terminal-wordmark {font:300 15.5px/1 'Movement Wordmark',sans-serif; letter-spacing:-.005em}
+.terminal-wordmark b {font-weight:700}
+.terminal-brand-sub {display:block; font-size:10px; font-weight:400; line-height:1.4; letter-spacing:.02em; color:var(--mm-ink-2); margin-top:6px}
+.header-divider {width:1px; height:32px; background:var(--mm-hairline)}
+.terminal-search {display:flex; align-items:center; gap:10px; width:240px; min-height:40px; padding:0 12px; border:1px solid var(--mm-hairline); border-radius:12px; background:var(--mm-surface-2); color:var(--mm-ink-2); font-size:12px; text-align:left}
+.terminal-search kbd {margin-left:auto; background:var(--mm-surface)}
+.header-actions {display:flex; align-items:center; gap:8px; margin-left:auto}
+.terminal-header .icon-button {width:40px; height:40px; border-radius:12px}
+.terminal-header .icon-button svg {width:20px; height:20px}
+.terminal-header .header-deposit {min-height:40px; padding:8px 18px}
+.account-selector {display:flex; align-items:center; gap:12px; min-height:48px; padding:5px 14px; margin-left:8px; border:1px solid var(--mm-hairline); border-radius:14px; text-align:left; background:var(--mm-surface)}
+.account-selector:hover {background:var(--mm-surface-2)}
+.account-selector-text {display:flex; flex-direction:column; min-width:112px}
+.account-selector-text strong {font:600 16px/1.4 var(--mm-font-display); font-variant-numeric:tabular-nums}
+.account-selector-text small {font-size:11px; color:var(--mm-ink-2); max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.account-selector>svg {width:16px; color:var(--mm-ink-2)}
+
+.terminal-workspace {flex:1; min-height:0; display:grid; grid-template-columns:264px minmax(0,1fr) 320px; grid-template-rows:minmax(0,1fr) 184px; gap:16px; padding:16px 20px}
+.panel {border:1px solid var(--mm-hairline); background:var(--mm-surface); border-radius:20px; overflow:hidden; min-width:0; min-height:0; box-shadow:var(--mm-shadow)}
+.markets-panel {display:flex; flex-direction:column; grid-column:1; grid-row:1 / 3}
+.chart-panel {display:flex; flex-direction:column; grid-column:2; grid-row:1; background:var(--chart-bg); container-type:inline-size; container-name:chart}
+.order-panel {display:flex; flex-direction:column; grid-column:3; grid-row:1 / 3}
+.activity-panel {display:flex; flex-direction:column; grid-column:2; grid-row:2; height:auto; min-height:0}
+.panel-heading {display:flex; align-items:center; justify-content:space-between; gap:12px; padding:20px 18px 16px; flex-shrink:0}
+.panel-heading h2 {font:600 20px/1.25 var(--mm-font-display); letter-spacing:-.03em; display:flex; align-items:center; gap:8px; margin:0}
+.panel-heading .count {font:500 11px var(--mm-font-body); border-radius:6px; min-width:22px; height:22px}
+.panel-heading .icon-button {width:34px; height:34px; border:1px solid var(--mm-hairline); border-radius:10px}
+.panel-heading .eyebrow {display:none}
+.terminal-app.activity-collapsed:not(.chart-focused) .terminal-workspace {grid-template-rows:minmax(0,1fr) 52px}
+.terminal-app.activity-collapsed:not(.chart-focused) .activity-content {display:none}
+.terminal-app.chart-focused .terminal-workspace {grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr)}
+.terminal-app.chart-focused .chart-panel {grid-column:1; grid-row:1}
+.terminal-app.chart-focused :is(.markets-panel,.order-panel,.activity-panel) {display:none}
+
+/* Watchlist: the instrument identity and quote form two stable columns. */
+.market-search-wrap {display:flex; align-items:center; gap:8px; margin:0 16px; padding:0 10px; border:1px solid var(--mm-hairline); border-radius:10px; background:var(--mm-surface-2)}
+.market-search-wrap svg {width:16px; color:var(--mm-ink-2)}
+.market-search-wrap input {height:38px; padding:8px 0; font-size:12px; border:0; background:transparent}
+.market-search-wrap kbd {font-size:10px}
+.market-filters {display:flex; align-items:center; gap:3px; overflow-x:auto; scrollbar-width:none; padding:12px 16px; flex-shrink:0}
+.market-filters button {flex-shrink:0; padding:6px 9px; min-height:30px; border-radius:999px; font-size:11px; font-weight:500; color:var(--mm-ink-2)}
+.market-filters button:hover {background:var(--mm-surface-2)}
+.market-filters button[aria-pressed='true'] {background:var(--accent-wash); color:var(--accent-ink)}
+.market-filters button svg {width:14px; height:14px; vertical-align:middle}
+.market-columns {display:flex; justify-content:space-between; padding:0 18px 10px; color:var(--mm-ink-3); font-size:11px; flex-shrink:0}
+.market-columns span:last-child {margin-right:21px}
+.market-list {flex:1; min-height:0; overflow:auto; padding:0 8px 8px; overscroll-behavior:contain}
+.market-row {position:relative; display:flex; align-items:center; min-height:66px; border:1px solid transparent; border-radius:12px; margin:2px 0; padding-right:4px}
+.market-row:hover {background:var(--mm-surface-2)}
+.market-row.selected {background:var(--accent-wash); border-color:transparent}
+.market-row.selected::before {content:''; position:absolute; left:0; top:18px; bottom:18px; width:3px; border-radius:0 3px 3px 0; background:var(--mm-accent)}
+.market-select {display:flex; align-items:center; gap:10px; flex:1; min-width:0; text-align:left; padding:12px 7px; min-height:64px}
+.market-name {min-width:0; flex:1}
+.market-name strong {font-size:12px; letter-spacing:-.01em}
+.market-name small {display:block; font-size:10.5px; color:var(--mm-ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:3px}
+.market-price {text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums}
+.market-price strong {font-size:12px; font-weight:600}
+.market-price small {display:block; font-size:10.5px; margin-top:3px; min-height:15px}
+.row-action {display:grid; place-items:center; width:24px; height:36px; flex-shrink:0; color:var(--mm-ink-3); border-radius:7px}
+.row-action svg {width:13px; height:13px}
+.row-action:hover {color:var(--mm-ink); background:var(--mm-surface)}
+.row-action.is-favorite {color:var(--accent-ink)}
+.markets-bottom {padding:12px 16px; border-top:1px solid var(--mm-hairline); font-size:11px; color:var(--mm-ink-2); flex-shrink:0}
+.markets-bottom .preview-label {margin:0; padding:0; border:0; font-size:10.5px}
+.markets-bottom>p {font:500 16px/1.5 var(--mm-font-display); margin:8px 0}
+
+/* The chart heading is the focal point, with restrained execution controls below. */
+.chart-overview {display:flex; flex-wrap:wrap; align-items:center; flex-shrink:0; background:var(--mm-surface)}
+.chart-overview .instrument-heading {flex:1; min-width:0}
+.chart-overview .instrument-quote {display:none}
+.chart-overview .alert-shortcut {margin-left:auto}
+.chart-overview .chart-dealing {border:0; padding-left:0; padding-right:16px}
+.chart-overview .chart-trade-modes {flex-basis:100%; justify-content:flex-end; margin:0}
+.chart-overview .chart-dealing {flex-wrap:wrap; width:324px; gap:3px 6px; padding-block:10px}
+.chart-overview .chart-deal {flex:1}
+.chart-overview .chart-trade-modes button {min-height:26px; padding:2px 6px}
+.chart-overview .chart-pick-status,.chart-overview .chart-inline-error,.chart-overview .chart-account-context {flex-basis:100%}
+
+.instrument-heading {display:flex; align-items:center; gap:12px; padding:16px 20px; min-height:78px; flex-shrink:0; background:var(--mm-surface)}
+.instrument-title {display:flex; align-items:center; gap:12px; min-width:0}
+.instrument-title h1 {display:flex; align-items:center; gap:10px; font:600 22px/1.2 var(--mm-font-display); letter-spacing:-.035em}
+.instrument-title p {font-size:12px; color:var(--mm-ink-2); margin-top:4px}
+.instrument-class {font:500 10px/1.5 var(--mm-font-body); color:var(--mm-ink-2); border:1px solid var(--mm-hairline); padding:2px 7px; border-radius:999px}
+.instrument-quote {display:flex; flex-direction:column; align-items:flex-end; gap:1px; margin-left:auto; white-space:nowrap; text-align:right}
+.instrument-quote strong {font:500 24px/1.25 var(--mm-font-display); letter-spacing:-.035em; font-variant-numeric:tabular-nums}
+.instrument-quote>span {font-size:11px; color:var(--mm-ink-2)}
+.alert-shortcut {width:36px; height:36px; border:1px solid var(--mm-hairline); border-radius:50%; flex-shrink:0}
+.chart-toolbar {display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:44px; padding:4px 12px; border-block:1px solid var(--mm-hairline); flex-shrink:0; background:var(--mm-surface)}
+.timeframes {display:flex; align-items:center; gap:2px}
+.timeframes button {min-width:33px; height:32px; border-radius:8px; color:var(--mm-ink-2); font-size:11px; font-weight:500}
+.timeframes button:hover {background:var(--mm-surface-2)}
+.timeframes button[aria-pressed='true'] {color:var(--mm-ink); background:var(--accent-wash); font-weight:600}
+.chart-controls {display:flex; align-items:center; gap:3px}
+.chart-controls .icon-button {width:32px; height:32px; border-radius:8px}
+.chart-controls svg {width:16px; height:16px}
+.chart-indicators-button {display:flex; align-items:center; gap:6px; height:32px; padding:0 8px; border-radius:8px; font-size:11px; white-space:nowrap; color:var(--mm-ink-2)}
+.chart-indicators-button:hover {background:var(--mm-surface-2); color:var(--mm-ink)}
+.chart-indicators-button span {display:grid; place-items:center; min-width:18px; height:18px; border-radius:50%; background:var(--accent-wash); color:var(--accent-ink); font-size:10px}
+.chart-dealing {display:flex; align-items:center; gap:6px; padding:8px 12px; flex-shrink:0; border-bottom:1px solid var(--mm-hairline); background:var(--mm-surface)}
+.chart-deal {display:flex; flex:0 1 116px; align-items:center; justify-content:space-between; gap:8px; min-height:38px; min-width:0; padding:6px 10px; border:1px solid; border-radius:9px; font-variant-numeric:tabular-nums}
+.chart-deal>span {font-size:11px; font-weight:500}
+.chart-deal>span svg {display:none}
+.chart-deal strong {font-size:13px; font-weight:600}
+.chart-deal.buy {color:var(--mm-pos); background:var(--mm-pos-soft); border-color:color-mix(in srgb,var(--mm-pos) 25%,transparent)}
+.chart-deal.sell {color:var(--mm-neg); background:var(--mm-neg-soft); border-color:color-mix(in srgb,var(--mm-neg) 25%,transparent)}
+.chart-deal:hover:not(:disabled) {border-color:currentColor}
+.chart-lots {position:relative; width:62px; flex-shrink:0; font-size:10px; gap:0}
+.chart-lots>span {position:absolute; top:3px; left:0; right:0; font-size:9px; text-align:center; color:var(--mm-ink-2); pointer-events:none}
+.chart-lots input {height:38px; padding:14px 3px 2px; text-align:center; font-size:12px; border-radius:9px; appearance:textfield}
+.chart-lots input::-webkit-inner-spin-button {appearance:none}
+.chart-trade-modes {display:flex; align-items:center; gap:3px; margin-left:auto; flex-shrink:0}
+.chart-trade-modes button {display:inline-flex; align-items:center; justify-content:center; gap:5px; min-height:34px; padding:6px; font-size:10px; white-space:nowrap; border-radius:8px; color:var(--mm-ink-2)}
+.chart-trade-modes button:hover {background:var(--mm-surface-2)}
+.chart-trade-modes button[aria-pressed='true'] {color:var(--accent-ink); background:var(--accent-wash)}
+.chart-trade-modes .one-click-active {box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent-ink) 35%,transparent)}
+.chart-trade-modes svg {width:15px; height:15px}
+.interactive-chart-plot {position:relative; flex:1; min-height:120px; overflow:hidden; isolation:isolate}
+.interactive-chart-plot .chart-canvas {position:absolute; inset:0; width:100%; height:100%}
+.interactive-chart-plot.is-picking {cursor:crosshair}
+.chart-readout {position:absolute; top:0; left:0; right:72px; z-index:2; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:4px 12px; padding:7px 12px; pointer-events:none}
+.ohlc-readout {display:flex; align-items:center; gap:9px; font-size:10px; font-variant-numeric:tabular-nums}
+.ohlc-readout b {color:var(--mm-ink-3); font-weight:400; margin-right:4px}
+.active-studies {display:flex; gap:8px; pointer-events:auto}
+.active-studies button {display:flex; align-items:center; gap:3px; font-size:10px; min-height:20px}
+.active-studies svg {width:11px; height:11px}
+.chart-navigation {position:absolute; bottom:3px; right:76px; z-index:4; display:flex; gap:2px; padding:2px; border:1px solid var(--mm-hairline); background:var(--mm-surface); border-radius:8px; opacity:0; transition:opacity .16s}
+.interactive-chart-plot:hover .chart-navigation,.chart-navigation:focus-within {opacity:1}
+.chart-navigation button {width:28px; height:26px; display:grid; place-items:center; border-radius:5px}
+.chart-navigation button:hover {background:var(--mm-surface-2)}
+.chart-navigation svg {width:15px; height:15px}
+.rsi-pane {position:relative; display:none; height:76px; flex-shrink:0; border-top:1px solid var(--mm-hairline)}
+.rsi-pane.is-visible {display:block}
+.interactive-chart-caption {display:flex; align-items:center; justify-content:space-between; flex-shrink:0; min-height:26px; padding:4px 14px; gap:10px; font-size:10px; color:var(--mm-ink-2); background:var(--mm-surface)}
+.interactive-chart-caption>span:last-child {display:none}
+.chart-attribution {font-size:10px}
+.position-dock {padding:7px 12px; border-top:1px solid var(--mm-hairline); background:var(--mm-surface); flex-shrink:0; font-variant-numeric:tabular-nums}
+.position-dock-summary {display:flex; align-items:center; gap:6px; min-width:0}
+.position-dock-summary select {flex:1; min-width:70px; max-width:190px; height:32px; padding:3px 5px; font-size:11px; border:0; background:transparent}
+.position-entry-price {display:none}
+.position-live-pnl {font-size:13px; margin-left:auto; white-space:nowrap}
+.position-close,.position-mobile-risk,.position-mobile-fit {display:flex; align-items:center; justify-content:center; gap:4px; min-height:32px; padding:5px 7px; border:1px solid var(--mm-hairline); border-radius:8px; font-size:10px; white-space:nowrap; flex-shrink:0}
+.position-close:hover,.position-mobile-risk:hover,.position-mobile-fit:hover {background:var(--mm-surface-2)}
+.position-close svg,.position-mobile-fit svg {width:14px; height:14px}
+
+/* Order entry uses the portals' form and button language, without hover lifts. */
+.ticket-mode {display:block; margin-bottom:5px; font-size:11px; color:var(--mm-ink-2)}
+.ticket-instrument {display:flex; align-items:center; gap:7px; font-size:11px}
+.order-scroll {flex:1; min-height:0; overflow:auto; padding:0 20px 8px; overscroll-behavior:contain}
+.order-scroll .segmented {border-radius:12px; padding:4px}
+.order-scroll .segmented button {min-height:34px; padding:7px 3px; font-size:12px; border-radius:9px}
+.order-panel .price-choice {margin-top:16px; gap:10px}
+.order-panel .quote-side {padding:12px; border-radius:12px}
+.order-panel .quote-side>span {font-size:12px}
+.order-panel .quote-side strong {font:500 21px/1.4 var(--mm-font-display); letter-spacing:-.035em; margin-top:3px}
+.order-panel .field-label {font-size:12px; margin-bottom:9px}
+.order-panel .volume-control {height:46px; border-radius:11px}
+.order-panel .volume-control input {height:42px; font-size:18px}
+.order-panel .volume-control button {height:42px; width:42px}
+.order-panel .volume-presets {gap:6px; margin-top:8px}
+.order-panel .volume-presets button {min-height:32px; border-radius:8px; font-size:11px}
+.order-panel .risk-heading {margin-top:22px; padding-top:18px; border-top:1px solid var(--mm-hairline)}
+.order-panel .risk-heading>span {font-size:12px}
+.order-panel .risk-helper {font-size:11px; line-height:1.6; max-width:none; margin-top:8px}
+.order-panel .risk-fields {gap:10px}
+.order-panel .risk-fields label,.order-panel .pending-fields label {font-size:11px}
+.order-panel .risk-fields input,.order-panel .pending-fields input {height:40px; font-size:12px; border-radius:10px}
+.order-panel .ticket-summary {display:block; margin:20px 0 12px; padding:14px; background:var(--mm-surface-2); border:0; border-radius:12px; font-size:11px}
+.order-panel .ticket-summary div {margin:0 0 8px}
+.order-panel .ticket-summary div:last-child {margin-bottom:0}
+.order-bottom {padding:16px 20px; border-top:1px solid var(--mm-hairline); background:var(--mm-surface); flex-shrink:0}
+.order-panel .order-bottom .place-order {min-height:46px; border-radius:999px; font-size:13px; font-weight:600; box-shadow:none}
+.place-order:hover:not(:disabled) {transform:none}
+.ticket-disclaimer {font-size:10px; line-height:1.5; margin-top:10px; color:var(--mm-ink-3); text-align:center}
+.execution-notice strong {font-size:12px}
+.execution-notice small {font-size:11px}
+.order-bottom .execution-notice {padding:10px; background:var(--mm-surface-2); border-radius:10px}
+.one-click-line {font-size:11px}
+
+.activity-heading {display:flex; align-items:center; gap:8px; min-height:50px; padding:0 16px; border-bottom:1px solid var(--mm-hairline); flex-shrink:0}
+.activity-tabs {display:flex; align-self:stretch; gap:20px; min-width:0; overflow:auto; scrollbar-width:none}
+.activity-tabs button {display:flex; align-items:center; gap:6px; position:relative; padding:0 0 2px; white-space:nowrap; color:var(--mm-ink-2); font-size:12px}
+.activity-tabs button[aria-selected='true'] {color:var(--mm-ink); font-weight:600}
+.activity-tabs button[aria-selected='true']::after {content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:var(--mm-accent)}
+.activity-tabs .count {font-size:10px; min-width:18px; height:18px}
+.activity-actions {display:flex; align-items:center; gap:4px; margin-left:auto}
+.activity-actions .icon-button {width:30px; height:32px}
+.orders-table th {font-size:10.5px; padding:8px 12px; font-weight:500; letter-spacing:0; text-transform:none}
+.orders-table td {font-size:12px; padding:9px 12px}
+.orders-table td small {font-size:10px; margin-top:2px}
+.orders-table .row-manage .icon-button {width:28px; height:28px}
+.activity-content .empty-state {min-height:100%; padding:20px}
+.activity-content .empty-state strong {font-size:13px}
+.activity-content .empty-state p {font-size:12px}
+
+.terminal-footer {display:flex; align-items:center; gap:20px; min-height:62px; padding:10px 24px; flex-shrink:0; background:var(--mm-surface); border-top:1px solid var(--mm-hairline)}
+.account-metrics {display:flex; align-items:center; gap:0}
+.account-metrics>div {display:flex; flex-direction:column; gap:3px; padding:0 24px; border-left:1px solid var(--mm-hairline)}
+.account-metrics>div:first-child {padding-left:0; border-left:0}
+.account-metrics span {color:var(--mm-ink-2); font-size:10.5px}
+.account-metrics strong {font:600 13px/1.4 var(--mm-font-body); font-variant-numeric:tabular-nums}
+.feed-status {display:flex; align-items:center; gap:7px; margin-left:auto; color:var(--mm-ink-2); font-size:10.5px}
+.feed-status time {margin-left:10px; color:var(--mm-ink-3); font-variant-numeric:tabular-nums}
+.mobile-workspace-nav {display:none}
+
+@container chart (max-width:740px) {
+  .chart-overview .chart-dealing {width:276px}
+  .chart-overview .alert-shortcut {display:none}
+  .chart-overview .instrument-heading {padding-right:6px}
+  .chart-overview .chart-deal strong {font-size:12px}
+
+  .chart-trade-modes button:first-child span,.chart-trade-modes button:last-child span {display:none}
+  .chart-trade-modes button {min-width:30px}
+  .instrument-class {display:none}
+  .activity-filter span {display:none}
+}
+@container chart (max-width:580px) {
+  .chart-overview {display:block}
+  .chart-overview .instrument-quote {display:flex}
+  .chart-overview .chart-dealing {width:auto; padding:6px 10px; border-top:1px solid var(--mm-hairline); flex-wrap:nowrap}
+  .chart-overview .chart-trade-modes {flex-basis:auto; margin-left:auto}
+  .chart-overview .chart-trade-modes button {min-height:32px; padding:3px}
+
+  .instrument-heading {padding:12px 14px; min-height:70px}
+  .instrument-title h1 {font-size:20px}
+  .instrument-title p {font-size:11px}
+  .instrument-quote strong {font-size:21px}
+  .chart-toolbar {flex-wrap:wrap; gap:0; padding:4px 8px}
+  .timeframes {flex:1}
+  .timeframes button {min-width:30px}
+  .chart-capture {display:none}
+  .chart-indicators-button {font-size:10px; padding:0 4px}
+  .chart-controls .icon-button {width:28px}
+  .chart-readout {right:68px; padding:5px 8px}
+  .ohlc-readout {font-size:9px; gap:5px}
+  .active-studies {display:none}
+  .position-mobile-fit span,.position-close span {display:none}
+  .chart-trade-modes button {padding:4px; min-width:28px}
+}
+@media(min-width:1600px) {
+  .terminal-workspace {grid-template-columns:280px minmax(0,1fr) 344px; padding:20px 24px; gap:20px; grid-template-rows:minmax(0,1fr) 200px}
+  .market-name strong,.market-price strong {font-size:13px}
+  .panel-heading {padding:22px 20px 18px}
+}
+@media(min-width:1181px) and (max-width:1350px) {
+  .terminal-workspace {grid-template-columns:238px minmax(0,1fr) 300px; gap:12px; padding:14px}
+  .markets-panel {grid-row:1}
+  .activity-panel {grid-column:1 / 3}
+  .market-row {min-height:60px}
+  .market-select {min-height:58px; gap:7px}
+  .market-select .instrument-art {--instrument-size:30px}
+  .market-price strong {font-size:11px}
+  .terminal-search {width:200px}
+}
+@media(min-width:1181px) and (max-height:800px) {
+  .terminal-header {height:64px}
+  .terminal-workspace {padding-block:12px; grid-template-rows:minmax(0,1fr) 152px; gap:12px}
+  .terminal-footer {min-height:54px; padding-block:7px}
+  .instrument-heading {padding-block:10px; min-height:64px}
+  .instrument-title h1 {font-size:20px}
+  .instrument-quote strong {font-size:22px}
+  .chart-toolbar {min-height:40px; padding-block:2px}
+  .chart-dealing {padding-block:5px}
+  .rsi-pane {height:54px}
+  .panel-heading {padding-block:16px 12px}
+  .order-panel .risk-heading {margin-top:16px; padding-top:14px}
+  .order-panel .ticket-summary {margin-top:14px; padding:10px}
+}
+@media(max-width:1180px) {
+  .terminal-header {height:66px; padding:0 20px; gap:16px}
+  .terminal-search,.header-divider {display:none}
+  .terminal-workspace {display:block; position:relative; padding:12px}
+  .markets-panel,.chart-panel,.order-panel,.activity-panel {display:none; height:100%}
+  .terminal-app[data-panel='markets'] .markets-panel,.terminal-app[data-panel='chart'] .chart-panel,.terminal-app[data-panel='trade'] .order-panel,.terminal-app[data-panel='activity'] .activity-panel {display:flex}
+  .terminal-app.activity-collapsed:not(.chart-focused) .activity-content {display:block}
+  .order-panel {max-width:640px; margin:auto}
+  .market-name strong,.market-price strong {font-size:14px}
+  .market-name small,.market-price small {font-size:12px}
+  .market-filters button {font-size:12px}
+  .market-columns span:last-child {margin-right:28px}
+  .row-action {width:36px; height:44px}
+  .mobile-workspace-nav {display:flex; align-items:center; flex-shrink:0; padding:6px 12px calc(6px + env(safe-area-inset-bottom)); background:var(--mm-surface); border-top:1px solid var(--mm-hairline)}
+  .mobile-workspace-nav button {display:flex; flex:1; align-items:center; justify-content:center; gap:8px; min-height:46px; border-radius:12px; color:var(--mm-ink-2); font-size:12px; font-weight:500}
+  .mobile-workspace-nav button[aria-current='page'] {color:var(--accent-ink); background:var(--accent-wash)}
+  .terminal-footer {min-height:56px; padding:8px 20px}
+  .account-metrics {flex:1; justify-content:space-between}
+  .account-metrics>div {padding:0 16px}
+  .feed-status {display:none}
+  .terminal-app.chart-focused .chart-panel {display:flex}
+  .chart-focused .terminal-header,.chart-focused .terminal-footer,.chart-focused .mobile-workspace-nav {display:none}
+  .chart-focused .terminal-workspace {padding:8px}
+  .chart-controls .icon-button,.timeframes button,.chart-indicators-button {height:36px; min-height:36px}
+}
+@media(max-width:620px) {
+  .chart-overview .chart-dealing {padding:6px 8px; flex-wrap:wrap}
+  .chart-overview .chart-trade-modes {flex-basis:100%; margin:0; justify-content:space-between}
+  .chart-overview .chart-trade-modes button {min-height:30px}
+
+  .terminal-header {height:64px; min-height:64px; padding:8px 12px; gap:8px; flex-wrap:nowrap}
+  .terminal-header .terminal-wordmark,.terminal-header .terminal-brand-sub {display:none}
+  .brand-link {margin-right:auto}
+  .terminal-header .header-actions {gap:2px}
+  .terminal-header .header-sound,.terminal-header .header-deposit {display:none}
+  .terminal-header .icon-button {width:36px; height:40px}
+  .account-selector {margin-left:4px; padding:5px 9px; min-height:44px; gap:8px; border-radius:12px}
+  .account-selector-text {min-width:0}
+  .account-selector-text strong {font-size:13px}
+  .account-selector-text small {font-size:10px; max-width:115px}
+  .terminal-workspace {padding:8px}
+  .panel {border-radius:16px}
+  .instrument-heading {padding:12px; min-height:68px; gap:8px}
+  .instrument-title {gap:8px}
+  .instrument-title h1 {font-size:19px}
+  .instrument-title p {font-size:10.5px}
+  .instrument-quote strong {font-size:20px}
+  .instrument-quote>span {font-size:10px}
+  .alert-shortcut {display:none}
+  .chart-toolbar {flex-wrap:wrap; justify-content:flex-start; padding:3px 8px}
+  .timeframes {width:100%; justify-content:space-between}
+  .timeframes button {flex:1; min-width:0}
+  .chart-controls {width:100%; justify-content:space-between}
+  .chart-controls .icon-button {width:36px}
+  .chart-indicators-button {flex:1; justify-content:center; font-size:11px}
+  .chart-capture {display:inline-flex}
+  .chart-dealing {padding:6px 8px; flex-wrap:wrap; gap:5px}
+  .chart-deal {flex:1; min-height:36px; padding:6px 8px}
+  .chart-deal strong {font-size:12px}
+  .chart-lots {width:56px}
+  .chart-lots input {height:36px}
+  .chart-trade-modes {flex-basis:100%; margin:0; justify-content:space-between}
+  .chart-trade-modes button {min-height:32px; flex:1; padding:4px; font-size:10px}
+  .chart-trade-modes button:first-child span,.chart-trade-modes button:last-child span {display:inline}
+  .interactive-chart-plot {min-height:120px}
+  .rsi-pane {height:48px}
+  .chart-readout {right:65px; padding:5px 7px}
+  .ohlc-readout {font-size:9px; gap:5px}
+  .ohlc-readout b {margin-right:2px}
+  .ohlc-readout>span:nth-child(2),.ohlc-readout>span:nth-child(3) {display:none}
+  .active-studies {display:none}
+  .position-dock {padding:5px 6px}
+  .position-dock-summary {gap:4px}
+  .position-direction {display:none}
+  .position-dock-summary select {font-size:10px; max-width:140px}
+  .position-live-pnl {font-size:12px}
+  .position-close,.position-mobile-risk,.position-mobile-fit {padding:4px; min-width:28px; font-size:10px; border:0}
+  .position-close span,.position-mobile-fit span {display:none}
+  .interactive-chart-caption {display:flex; justify-content:flex-end; min-height:22px; padding:3px 10px}
+  .interactive-chart-caption>span {display:none}
+  .terminal-footer {min-height:54px; padding:8px 16px}
+  .account-metrics>div {padding:0 10px}
+  .account-metrics>div:nth-child(3),.account-metrics>div:nth-child(5) {display:none}
+  .account-metrics>div:last-child {padding-right:0}
+  .account-metrics strong {font-size:11px}
+  .account-metrics span {font-size:10px}
+  .mobile-workspace-nav {padding:4px 8px calc(4px + env(safe-area-inset-bottom))}
+  .mobile-workspace-nav button {flex-direction:column; gap:3px; min-height:48px; font-size:10px}
+  .mobile-workspace-nav svg {width:18px; height:18px}
+  .activity-heading {min-height:50px; padding:0 12px; gap:3px}
+  .activity-tabs {gap:16px}
+  .activity-tabs button {font-size:11px}
+  .activity-actions .activity-filter {display:none}
+  .panel-heading {padding:18px 18px 14px}
+  .order-panel .panel-heading h2 {font-size:22px}
+  .order-panel .order-scroll {padding:0 18px 10px}
+  .order-bottom {padding:14px 18px}
+  .order-panel .risk-fields {flex-wrap:wrap}
+  .orders-table {min-width:0}
+  .orders-table td {padding:0; font-size:13px}
+  .orders-table .row-manage .icon-button {width:44px; height:44px}
+}
+@media(max-width:1180px) and (max-height:600px) {
+  .terminal-workspace {overflow:auto}
+  .chart-panel {min-height:470px}
+  .chart-focused .chart-panel {min-height:360px}
+}
+@media(prefers-reduced-motion:reduce) {
+  .terminal-app *,.terminal-app *::before,.terminal-app *::after {scroll-behavior:auto; transition:none; animation:none}
+}
+
+.chart-message {inset:0; z-index:5}
+.chart-account-context {background:var(--mm-surface)}
+
+/* Session gate: shown until a client-portal session exists, and when one ends. */
+.session-gate { min-height: 100dvh; display: grid; place-items: center; padding: 16px; background: var(--mm-bg); color: var(--mm-ink); }
+.session-gate-card { width: min(100%, 400px); display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 32px 24px; text-align: center; background: var(--mm-surface); border: 1px solid var(--mm-hairline); border-radius: var(--mm-radius-card); box-shadow: var(--mm-shadow-lift); }
+.session-gate-card h1 { margin: 0; font-family: var(--mm-font-display); font-size: 20px; font-weight: 600; text-wrap: balance; }
+.session-gate-card p { margin: 0; color: var(--mm-ink-2); font-size: 13px; line-height: 1.5; text-wrap: pretty; }
+.session-gate-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; background: var(--mm-surface-2); color: var(--mm-ink-2); }
+.session-gate-icon svg, .session-gate-spinner { width: 22px; height: 22px; }
+.session-gate-spinner { color: var(--mm-ink-3); }
+.session-gate-accounts { width: 100%; display: flex; flex-direction: column; gap: 8px; margin-top: 6px; padding-top: 16px; border-top: 1px solid var(--mm-line-soft); }
+.session-gate-accounts h2 { margin: 0 0 2px; font-size: 12px; font-weight: 500; color: var(--mm-ink-3); }
+.session-gate .button svg { width: 16px; height: 16px; }

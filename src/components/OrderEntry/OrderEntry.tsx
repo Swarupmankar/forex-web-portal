@@ -1,245 +1,457 @@
-'use client';
-
-import React from 'react';
-import { useUIStore } from '@/store/useUIStore';
-import { usePriceStore } from '@/store/usePriceStore';
-import { usePlaceOrderMutation } from '@/store/api/tradingApi';
-import { Minus, Plus, AlertCircle, ArrowUpRight, ArrowDownRight, Layers } from 'lucide-react';
-
-const LOT_PRESETS = [0.01, 0.10, 0.50, 1.00];
-
-export const OrderEntry: React.FC = () => {
-  const {
-    activeSymbol,
-    orderMode,
-    setOrderMode,
-    selectedOrderSide,
-    setSelectedOrderSide,
-    volumeLots,
-    setVolumeLots,
-    enableTPSL,
-    setEnableTPSL,
-    takeProfit,
-    setTakeProfit,
-    stopLoss,
-    setStopLoss,
-  } = useUIStore();
-
-  const prices = usePriceStore((state) => state.prices);
-  const [placeOrder, { isLoading }] = usePlaceOrderMutation();
-
-  const tick = prices[activeSymbol];
-  const bidPrice = tick ? tick.bid : 4377.85;
-  const askPrice = tick ? tick.ask : 4378.11;
-
-  const handleExecuteOrder = async () => {
-    try {
-      await placeOrder({
-        symbol: activeSymbol,
-        orderType: selectedOrderSide,
-        volume: volumeLots,
-        stopLoss: stopLoss ? parseFloat(stopLoss) : undefined,
-        takeProfit: takeProfit ? parseFloat(takeProfit) : undefined,
-        executionMode: orderMode,
-      }).unwrap();
-      alert(`Order placed successfully! ${selectedOrderSide} ${volumeLots} lots of ${activeSymbol}`);
-    } catch (e) {
-      // simulate client side order execution for demo
-      alert(`Demo Order Executed! ${selectedOrderSide} ${volumeLots} lots of ${activeSymbol} at ${selectedOrderSide === 'BUY' ? askPrice : bidPrice}`);
+"use client";
+import { useEffect, useRef, useState } from "react";
+import { PORTAL_SIGN_IN } from "@/lib/portalHandoff";
+import {
+  ArrowRight,
+  ShieldCheck,
+  Info,
+  Plus,
+  Minus,
+  LockKeyhole,
+  Zap,
+  Crosshair,
+  RefreshCw,
+} from "lucide-react";
+import { useUIStore } from "@/store/useUIStore";
+import { useWorkspaceStore } from "@/store/useWorkspaceStore";
+import { usePriceStore } from "@/store/usePriceStore";
+import { useGetAllStocksQuery } from "@/store/api/tradingApi";
+import { formatPrice, instrument } from "@/lib/market";
+import { validateTrade, TradeRequest } from "@/lib/contracts";
+import { isQuoteExecutable } from "@/lib/freshness";
+import { validateVolume, stepVolume, needsReview } from "@/lib/volume";
+import { useExecutableQuote } from "@/hooks/useExecutableQuote";
+import { orderRisk, lotsForRisk } from "@/lib/risk";
+import { Dialog } from "@/components/terminal/Dialog";
+import { InstrumentIcon } from '@/components/terminal/InstrumentIcon';
+import { PRACTICE_CONTRACTS, pendingAtPrice } from '@/lib/practice';
+import { useAccountStore } from '@/store/useAccountStore';
+import { accountKindLabel } from '@/lib/accountSessions';
+import { useOrderSubmit } from "./useOrderSubmit";
+import { useOneClick } from "./useOneClick";
+const usd = (n: number | undefined, signed = false) =>
+  n === undefined ? "—" : `${signed ? (n > 0 ? "+" : n < 0 ? "−" : "") : ""}$${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export function OrderEntry() {
+  const activeAccount = useAccountStore(s => s.accounts.find(a => a.id === s.activeId));
+  const u = useUIStore(),
+    w = useWorkspaceStore();
+  const symbol = u.activeSymbol;
+  const connection = usePriceStore((s) => s.connection);
+  const volume=u.volumeInput,setVolume=u.setVolumeInput;
+  const [entry, setEntry] = useState(""),
+    [error, setError] = useState(""),
+    [review, setReview] = useState<TradeRequest | null>(null),
+    [riskAmount, setRiskAmount] = useState(""),
+    [now, setNow] = useState(0);
+  const { submit, check: checkSubmit, submitting, instantFor, canExecute, practice, policy, verifying, spec, specReady } = useOrderSubmit();
+  const oneClick = useOneClick();
+  const stocks = useGetAllStocksQuery(undefined, { skip: practice || !u.isAuthenticated });
+  const metadata = practice ? undefined : stocks.data?.find((i) => i.symbol === symbol);
+  // The same quote the submit path validates against: the live bid and ask.
+  const quote = useExecutableQuote(symbol);
+  const limits = spec(symbol);
+  const min = limits.min, step = limits.step;
+  const contract = practice ? PRACTICE_CONTRACTS[symbol] : metadata?.contractSize ?? instrument(symbol).contractSize;
+  const quoteReady = isQuoteExecutable(quote, now) && (practice || connection === "connected");
+  const fresh = quoteReady;
+  const executable = canExecute && quoteReady;
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    setNow(Date.now());
+    return () => clearInterval(t);
+  }, []);
+  useEffect(() => {
+    setError("");
+    setEntry("");
+    u.setStopLoss("");
+    u.setTakeProfit("");
+    setReview(null);
+  }, [symbol, practice, u.setStopLoss, u.setTakeProfit]);
+  const side = u.selectedOrderSide;
+  // Exit levels are side-specific: a Buy stop below the market is invalid for a Sell, so switching sides clears them.
+  const previousSide = useRef(side);
+  useEffect(() => {
+    if (previousSide.current === side) return;
+    previousSide.current = side;
+    if (u.stopLoss || u.takeProfit) {
+      u.setStopLoss("");
+      u.setTakeProfit("");
     }
-  };
-
+  }, [side, u]);
+  const reference = side === "BUY" ? quote?.ask : quote?.bid;
+  // The pending type follows from where the entry sits relative to the market, so it can never be on the wrong side.
+  const entryPrice = Number(entry);
+  const pendingType = u.orderMode === "PENDING" && entry && entryPrice > 0 && reference ? pendingAtPrice(side, entryPrice, reference) : undefined;
+  function build(): TradeRequest {
+    return {
+      symbol,
+      orderType: side,
+      executionType: u.orderMode === "MARKET" ? "MARKET" : pendingType ?? "LIMIT",
+      lotSize: Number(volume),
+      ...(u.orderMode === "PENDING" ? { limitPrice: entryPrice } : {}),
+      ...(u.enableTPSL && u.stopLoss ? { sl: Number(u.stopLoss) } : {}),
+      ...(u.enableTPSL && u.takeProfit ? { tp: Number(u.takeProfit) } : {}),
+    };
+  }
+  const draft = build();
+  const risk = orderRisk(draft, reference, contract, practice ? 100 : undefined);
+  function check(payload: TradeRequest) {
+    if (canExecute && !specReady) return "Loading instrument details…";
+    if (u.orderMode === "PENDING" && !(entryPrice > 0)) return "Set an entry price for the pending order.";
+    return validateVolume(payload.lotSize, limits) ?? validateTrade(payload, reference);
+  }
+  async function place(payload: TradeRequest) {
+    const result = await submit(payload);
+    if (result.ok) {
+      setReview(null);
+      setError("");
+      if (payload.executionType !== "MARKET") setEntry("");
+      if (result.id) w.selectTrade(result.id);
+      w.setActivityExpanded(true);
+    } else if (result.unknown) {
+      // The "Confirming…" notice below owns this state until the order is found or ruled out.
+      setError("");
+      setReview(null);
+    } else if (result.error) {
+      setError(result.error);
+      setReview(null);
+    }
+  }
+  const instant = instantFor(Number(volume));
+  function act() {
+    setError("");
+    const payload = build(), issue = check(payload);
+    if (issue) {
+      setError(issue);
+      return;
+    }
+    u.setVolumeLots(payload.lotSize);
+    // With one-click, anything the submit path would reject is shown here instead of a dialog.
+    if (instant && quoteReady) {
+      const blocked = checkSubmit(payload);
+      if (blocked) setError(blocked);
+      else void place(payload);
+    } else setReview(payload);
+  }
+  function sizeByRisk() {
+    const stop = Number(u.stopLoss), amount = Number(riskAmount);
+    const at = u.orderMode === "PENDING" ? entryPrice : reference;
+    const lots = contract && at && stop ? lotsForRisk(symbol, side, amount, contract, at, stop, step) : undefined;
+    if (!lots) {
+      setError(!(stop > 0) ? "Set a stop loss first, then size by risk." : "That risk is too small for the minimum volume at this stop.");
+      return;
+    }
+    setError("");
+    setVolume(String(Math.min(lots, limits.max)));
+  }
+  const actionLabel = u.orderMode === "MARKET"
+    ? `${side === "BUY" ? "Buy" : "Sell"} ${Number(volume) || 0} lots at market`
+    : `Place ${side.toLowerCase()} ${(pendingType ?? "limit").toLowerCase()}`;
+  const blockedReason = verifying || !canExecute ? null
+    : !policy.canPlaceSymbol(symbol) ? `Trading in ${symbol} is paused.`
+    : !quoteReady ? "Waiting for a fresh quote…" : null;
   return (
-    <aside className="w-[300px] h-full bg-[var(--mm-surface)] border-l border-[var(--mm-hairline)] flex flex-col p-3.5 select-none overflow-y-auto no-scrollbar">
-      {/* Title & Category Badge */}
-      <div className="flex items-center justify-between pb-3 border-b border-[var(--mm-hairline)]">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-[var(--mm-accent)] text-black font-extrabold flex items-center justify-center text-xs">
-            {activeSymbol.substring(0, 1)}
-          </div>
-          <span className="font-bold text-sm text-[var(--mm-ink)]">{activeSymbol}</span>
+    <aside className="order-panel panel">
+      <div className="panel-heading">
+        <div>
+          <span className="ticket-mode">{practice ? "Practice account" : activeAccount ? `${accountKindLabel(activeAccount.kind)} · ${activeAccount.username}` : "No account connected"}</span>
+          <h2>Order ticket</h2>
         </div>
-        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--mm-surface-2)] text-[var(--mm-ink-2)] border border-[var(--mm-hairline)]">
-          METALS
-        </span>
+        <span className="ticket-instrument"><InstrumentIcon symbol={symbol}/>{symbol}</span>
       </div>
-
-      {/* Order Execution Mode Tabs */}
-      <div className="grid grid-cols-2 gap-1 p-1 bg-[var(--mm-surface-2)] rounded-lg border border-[var(--mm-hairline)] my-3">
-        <button
-          onClick={() => setOrderMode('MARKET')}
-          className={`py-1.5 text-xs font-bold rounded-md transition-all ${
-            orderMode === 'MARKET'
-              ? 'bg-[var(--mm-surface)] text-[var(--mm-ink)] shadow-sm'
-              : 'text-[var(--mm-ink-2)] hover:text-[var(--mm-ink)]'
-          }`}
-        >
-          Market
-        </button>
-        <button
-          onClick={() => setOrderMode('PENDING')}
-          className={`py-1.5 text-xs font-bold rounded-md transition-all ${
-            orderMode === 'PENDING'
-              ? 'bg-[var(--mm-surface)] text-[var(--mm-ink)] shadow-sm'
-              : 'text-[var(--mm-ink-2)] hover:text-[var(--mm-ink)]'
-          }`}
-        >
-          Pending
-        </button>
-      </div>
-
-      {/* Buy / Sell Buttons */}
-      <div className="grid grid-cols-2 gap-2 my-2">
-        {/* Sell Button */}
-        <button
-          onClick={() => setSelectedOrderSide('SELL')}
-          className={`p-3 rounded-xl border flex flex-col items-center justify-center transition-all ${
-            selectedOrderSide === 'SELL'
-              ? 'bg-rose-500/20 border-rose-500 text-rose-400 shadow-[0_0_12px_rgba(255,123,123,0.3)]'
-              : 'bg-[var(--mm-surface-2)] border-[var(--mm-hairline)] text-[var(--mm-ink-2)] hover:border-rose-500/50'
-          }`}
-        >
-          <span className="text-[10px] font-bold tracking-wider uppercase text-rose-400 flex items-center gap-0.5">
-            SELL <ArrowDownRight className="w-3 h-3" />
-          </span>
-          <span className="text-sm font-mono font-extrabold text-rose-400 mt-0.5">{bidPrice.toFixed(2)}</span>
-        </button>
-
-        {/* Buy Button */}
-        <button
-          onClick={() => setSelectedOrderSide('BUY')}
-          className={`p-3 rounded-xl border flex flex-col items-center justify-center transition-all ${
-            selectedOrderSide === 'BUY'
-              ? 'bg-sky-500/20 border-sky-500 text-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.3)]'
-              : 'bg-[var(--mm-surface-2)] border-[var(--mm-hairline)] text-[var(--mm-ink-2)] hover:border-sky-500/50'
-          }`}
-        >
-          <span className="text-[10px] font-bold tracking-wider uppercase text-sky-400 flex items-center gap-0.5">
-            BUY <ArrowUpRight className="w-3 h-3" />
-          </span>
-          <span className="text-sm font-mono font-extrabold text-sky-400 mt-0.5">{askPrice.toFixed(2)}</span>
-        </button>
-      </div>
-
-      {/* Market Sentiment Gauge */}
-      <div className="my-2 space-y-1">
-        <div className="flex justify-between text-[10px] font-semibold text-[var(--mm-ink-3)]">
-          <span>50.4% Sell</span>
-          <span>49.6% Buy</span>
-        </div>
-        <div className="w-full h-1.5 bg-rose-500/40 rounded-full overflow-hidden flex">
-          <div className="h-full bg-rose-500" style={{ width: '50.4%' }} />
-          <div className="h-full bg-sky-500" style={{ width: '49.6%' }} />
-        </div>
-      </div>
-
-      {/* Volume (Lots) Stepper & Presets */}
-      <div className="my-3 space-y-2 border-t border-[var(--mm-hairline)] pt-3">
-        <div className="flex justify-between items-center text-xs font-bold text-[var(--mm-ink)]">
-          <span>VOLUME (LOTS)</span>
-          <span className="text-[10px] text-[var(--mm-ink-3)]">Max 0.20 lots</span>
-        </div>
-
-        {/* Stepper */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setVolumeLots(volumeLots - 0.01)}
-            className="w-9 h-9 rounded-lg bg-[var(--mm-surface-2)] border border-[var(--mm-hairline)] flex items-center justify-center text-[var(--mm-ink)] font-bold hover:bg-[var(--mm-hairline)] transition-colors"
-          >
-            <Minus className="w-4 h-4" />
-          </button>
-          <input
-            type="number"
-            step="0.01"
-            value={volumeLots}
-            onChange={(e) => setVolumeLots(parseFloat(e.target.value) || 0.01)}
-            className="flex-1 text-center bg-[var(--mm-surface-2)] border border-[var(--mm-hairline)] text-sm font-mono font-bold py-1.5 rounded-lg text-[var(--mm-ink)] focus:outline-none focus:border-[var(--mm-accent)]"
-          />
-          <button
-            onClick={() => setVolumeLots(volumeLots + 0.01)}
-            className="w-9 h-9 rounded-lg bg-[var(--mm-surface-2)] border border-[var(--mm-hairline)] flex items-center justify-center text-[var(--mm-ink)] font-bold hover:bg-[var(--mm-hairline)] transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Presets */}
-        <div className="grid grid-cols-4 gap-1.5 pt-1">
-          {LOT_PRESETS.map((preset) => (
+      <div className="order-scroll">
+        <div className="segmented" aria-label="Order execution type">
+          {(["MARKET", "PENDING"] as const).map((mode) => (
             <button
-              key={preset}
-              onClick={() => setVolumeLots(preset)}
-              className={`py-1 rounded text-[11px] font-mono font-semibold border transition-colors ${
-                volumeLots === preset
-                  ? 'bg-[var(--mm-accent)] text-black border-[var(--mm-accent)] font-bold'
-                  : 'bg-[var(--mm-surface-2)] border-[var(--mm-hairline)] text-[var(--mm-ink-2)] hover:text-[var(--mm-ink)]'
-              }`}
+              key={mode}
+              aria-pressed={u.orderMode === mode}
+              onClick={() => {
+                u.setOrderMode(mode);
+                setError("");
+              }}
             >
-              {preset.toFixed(2)}
+              {mode === "MARKET" ? "Market order" : "Pending order"}
             </button>
           ))}
         </div>
-      </div>
-
-      {/* TP / SL Toggle */}
-      <div className="my-2 border-t border-[var(--mm-hairline)] pt-3 space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-[var(--mm-ink)]">TP / SL</span>
+        <div className="price-choice" aria-label="Trade direction">
+          {(["SELL", "BUY"] as const).map((s) => (
+            <button
+              key={s}
+              className={`quote-side ${s.toLowerCase()}`}
+              aria-pressed={side === s}
+              onClick={() => {
+                u.setSelectedOrderSide(s);
+                setError("");
+              }}
+            >
+              <span>
+                {s === "BUY" ? "Buy" : "Sell"}
+                <span>{s === "BUY" ? "Ask" : "Bid"}</span>
+              </span>
+              <strong>
+                {formatPrice(s === "BUY" ? quote?.ask : quote?.bid, symbol)}
+              </strong>
+            </button>
+          ))}
+        </div>
+        <label className="field-label" htmlFor="lot-volume">
+          Volume <span>Lots</span>
+        </label>
+        <div className="volume-control">
           <button
-            onClick={() => setEnableTPSL(!enableTPSL)}
-            className={`w-8 h-4.5 rounded-full transition-colors relative p-0.5 ${
-              enableTPSL ? 'bg-[var(--mm-accent)]' : 'bg-[var(--mm-hairline)]'
-            }`}
+            type="button"
+            aria-label="Decrease volume"
+            onClick={() => setVolume(String(stepVolume(Number(volume), limits, -1)))}
           >
-            <div
-              className={`w-3.5 h-3.5 rounded-full bg-black transition-transform ${
-                enableTPSL ? 'translate-x-3.5' : 'translate-x-0'
-              }`}
-            />
+            <Minus />
+          </button>
+          <input
+            id="lot-volume"
+            type="number"
+            inputMode="decimal"
+            min={min}
+            step={step}
+            max={limits.max}
+            value={volume}
+            onChange={(e) => setVolume(e.target.value)}
+          />
+          <button
+            type="button"
+            aria-label="Increase volume"
+            onClick={() => setVolume(String(stepVolume(Number(volume), limits, 1)))}
+          >
+            <Plus />
           </button>
         </div>
-
-        {enableTPSL && (
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <div>
-              <label className="text-[10px] font-bold text-emerald-400 block mb-1">Take Profit</label>
-              <input
-                type="number"
-                placeholder="4400.00"
-                value={takeProfit}
-                onChange={(e) => setTakeProfit(e.target.value)}
-                className="w-full bg-[var(--mm-surface-2)] border border-[var(--mm-hairline)] text-xs font-mono py-1 px-2 rounded-lg text-[var(--mm-ink)] focus:outline-none focus:border-emerald-400"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold text-rose-400 block mb-1">Stop Loss</label>
-              <input
-                type="number"
-                placeholder="4350.00"
-                value={stopLoss}
-                onChange={(e) => setStopLoss(e.target.value)}
-                className="w-full bg-[var(--mm-surface-2)] border border-[var(--mm-hairline)] text-xs font-mono py-1 px-2 rounded-lg text-[var(--mm-ink)] focus:outline-none focus:border-rose-400"
-              />
-            </div>
+        <div className="volume-presets">
+          {["0.01", "0.10", "0.50", "1.00"].map((v) => (
+            <button
+              key={v}
+              aria-pressed={Number(volume) === Number(v)}
+              onClick={() => setVolume(v)}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+        {u.orderMode === "PENDING" && (
+          <div className="pending-fields">
+            <label>
+              Entry price
+              <span className="input-with-action">
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  value={entry}
+                  onChange={(e) => setEntry(e.target.value)}
+                  placeholder="Set your entry price"
+                />
+                <button type="button" title="Start from the current price" aria-label="Use current market price" disabled={!reference} onClick={() => reference && setEntry(String(Number(reference.toFixed(instrument(symbol).digits ?? 5))))}><Crosshair /></button>
+              </span>
+            </label>
+            <p className="pending-type" aria-live="polite">
+              {pendingType ? <><strong>{side === "BUY" ? "Buy" : "Sell"} {pendingType.toLowerCase()}</strong> · fills when the {side === "BUY" ? "ask" : "bid"} {pendingType === "LIMIT" ? (side === "BUY" ? "falls to" : "rises to") : side === "BUY" ? "rises to" : "falls to"} this price</> : "Limit or stop is chosen from where you place the entry."}
+            </p>
           </div>
         )}
+        <div className="risk-heading">
+          <span>
+            <ShieldCheck />
+            Risk controls
+          </span>
+          <label className="switch">
+            <input
+              aria-label="Enable stop loss and take profit"
+              type="checkbox"
+              checked={u.enableTPSL}
+              onChange={(e) => u.setEnableTPSL(e.target.checked)}
+            />
+            <span />
+          </label>
+        </div>
+        {u.enableTPSL ? (
+          <>
+            <div className="risk-fields">
+              <label>
+                Stop loss
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  value={u.stopLoss}
+                  onChange={(e) => u.setStopLoss(e.target.value)}
+                  placeholder="Price"
+                />
+                <small className={`risk-hint ${risk.atStop !== undefined ? "negative" : ""}`}>{u.stopLoss ? usd(risk.atStop, true) : "Optional"}</small>
+              </label>
+              <label>
+                Take profit
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  value={u.takeProfit}
+                  onChange={(e) => u.setTakeProfit(e.target.value)}
+                  placeholder="Price"
+                />
+                <small className={`risk-hint ${risk.atTarget !== undefined ? "positive" : ""}`}>{u.takeProfit ? usd(risk.atTarget, true) : "Optional"}</small>
+              </label>
+            </div>
+            <div className="risk-size">
+              <label htmlFor="risk-amount">Size by risk</label>
+              <span className="input-with-prefix"><span>$</span><input id="risk-amount" type="number" inputMode="decimal" min="0" step="any" placeholder="Amount" value={riskAmount} onChange={(e) => setRiskAmount(e.target.value)} /></span>
+              <button type="button" className="button button-outline" disabled={!riskAmount} onClick={sizeByRisk}>Set lots</button>
+            </div>
+          </>
+        ) : (
+          <p className="helper risk-helper">
+            Set optional exit levels before you enter a trade.
+          </p>
+        )}
+        <dl className="ticket-summary">
+          <div>
+            <dt>{practice ? "Est. margin" : "Instrument"}</dt>
+            <dd>{practice ? usd(risk.margin) : instrument(symbol).name}</dd>
+          </div>
+          <div>
+            <dt>{risk.rewardRisk !== undefined ? "Reward : risk" : practice ? "Practice leverage" : "Execution"}</dt>
+            <dd>
+              {risk.rewardRisk !== undefined ? `1 : ${risk.rewardRisk}` : practice ? "1:100 · USD" : u.orderMode === "MARKET"
+                ? "Market price"
+                : pendingType ? `${side.toLowerCase()} ${pendingType.toLowerCase()}` : "Pending"}
+            </dd>
+          </div>
+        </dl>
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
       </div>
-
-      {/* Execution Action Button */}
-      <div className="mt-auto pt-3">
+      <div className="order-bottom">
+        {!practice && u.isAuthenticated && policy.reason && (
+          <div className="execution-notice">
+            <LockKeyhole />
+            <span>
+              <strong>{policy.mode === "close-only" ? "Close-only mode" : "New orders unavailable"}</strong>
+              <small>{policy.mode === "close-only" ? "You can close or reduce positions. New orders are paused." : policy.reason}</small>
+            </span>
+          </div>
+        )}
+        {verifying && (
+          <div className="execution-notice is-verifying" role="status">
+            <RefreshCw className="spin" />
+            <span>
+              <strong>Confirming {verifying.request.orderType.toLowerCase()} {verifying.request.lotSize} {verifying.request.symbol}</strong>
+              <small>The response was lost. We're checking your account — don't place it again.</small>
+            </span>
+          </div>
+        )}
         <button
-          onClick={handleExecuteOrder}
-          disabled={isLoading}
-          className={`w-full py-3 rounded-xl font-extrabold text-xs tracking-wider uppercase flex items-center justify-center gap-1.5 transition-all shadow-lg ${
-            selectedOrderSide === 'BUY'
-              ? 'bg-sky-500 hover:bg-sky-400 text-black shadow-sky-500/20'
-              : 'bg-rose-500 hover:bg-rose-400 text-black shadow-rose-500/20'
-          }`}
+          className={`button full-width place-order ${side.toLowerCase()}`}
+          onClick={act}
+          disabled={submitting || !!verifying}
+          aria-describedby="ticket-execution-mode"
         >
-          {selectedOrderSide === 'BUY' ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-          Place {selectedOrderSide} Order at {selectedOrderSide === 'BUY' ? askPrice.toFixed(2) : bidPrice.toFixed(2)}
+          {submitting ? "Placing…" : instant && quoteReady ? actionLabel : needsReview(Number(volume)) && oneClick.on ? `Review large ${side.toLowerCase()} order` : `Review ${side.toLowerCase()} order`}
+          {instant && quoteReady ? <Zap /> : <ArrowRight />}
         </button>
+        {canExecute && (
+          <div className="one-click-line" id="ticket-execution-mode">
+            <span>{oneClick.on ? <><Zap />One-click trading on</> : "Review before placing"}</span>
+            <button className="text-button" onClick={() => oneClick.set(!oneClick.on)}>{oneClick.on ? "Review first" : "Turn on one-click"}</button>
+          </div>
+        )}
+        {blockedReason && canExecute && <p className="helper ticket-blocked" role="status">{blockedReason}</p>}
+        {!practice && !u.isAuthenticated && (
+          <a className="text-button connect-inline" href={PORTAL_SIGN_IN}>
+            Open an account from your client portal
+            <ArrowRight />
+          </a>
+        )}
+        <p className="ticket-disclaimer">
+          {practice ? "Simulated prices · no real money or market execution" : "Prices can change. Orders execute at the available market price."}
+        </p>
       </div>
+      {oneClick.dialog}
+      {review && (
+        <Dialog
+          title={practice ? "Review practice order" : "Review your order"}
+          onClose={() => {
+            if (!submitting) setReview(null);
+          }}
+        >
+          <div className="review-instrument">
+            <span className={`side-label ${review.orderType.toLowerCase()}`}>
+              {review.orderType}
+            </span>
+            <h3>{review.symbol}</h3>
+            <span>{review.lotSize} lots</span>
+          </div>
+          <dl className="detail-list">
+            <div>
+              <dt>Order type</dt>
+              <dd>{review.executionType === "MARKET" ? "Market" : `${review.orderType === "BUY" ? "Buy" : "Sell"} ${review.executionType.toLowerCase()}`}</dd>
+            </div>
+            <div>
+              <dt>
+                {review.executionType === "MARKET"
+                  ? "Indicative entry"
+                  : "Entry price"}
+              </dt>
+              <dd>
+                {formatPrice(review.limitPrice ?? reference, review.symbol)}
+              </dd>
+            </div>
+            <div>
+              <dt>Stop loss</dt>
+              <dd>{review.sl ? <>{formatPrice(review.sl, review.symbol)} <small className="negative">{usd(orderRisk(review, reference, contract).atStop, true)}</small></> : "Not set"}</dd>
+            </div>
+            <div>
+              <dt>Take profit</dt>
+              <dd>{review.tp ? <>{formatPrice(review.tp, review.symbol)} <small className="positive">{usd(orderRisk(review, reference, contract).atTarget, true)}</small></> : "Not set"}</dd>
+            </div>
+            {practice && <div>
+              <dt>Est. margin</dt>
+              <dd>{usd(orderRisk(review, reference, contract, 100).margin)}</dd>
+            </div>}
+            <div>
+              <dt>Trading account</dt>
+              <dd>{practice ? "Practice · virtual USD" : u.tradingAccountNo || "Not connected"}</dd>
+            </div>
+          </dl>
+          <p className="notice-note">
+            <Info />
+            {practice ? "This is a simulated trade, saved in this browser. 1:100 practice leverage, no commission or swap. Pending orders and exit levels run while practice mode is open." : policy.reason
+              ? `${policy.reason} This review does not place a trade.`
+              : !fresh
+                ? "Waiting for a fresh market quote."
+                : "Submitting sends this order for execution. The final fill price may differ."}
+            {needsReview(review.lotSize) && <><br /><strong>Large order: {review.lotSize} lots.</strong> Check the volume before confirming.</>}
+          </p>
+          <button
+            className={`button full-width place-order ${review.orderType.toLowerCase()}`}
+            disabled={!executable || submitting || !!verifying}
+            onClick={() => void place(review)}
+          >
+            {submitting
+              ? "Placing…"
+              : practice ? `Place practice ${review.orderType.toLowerCase()}` : !canExecute
+                ? "Trading unavailable"
+                : `Confirm ${review.orderType.toLowerCase()}`}
+          </button>
+          <button
+            className="text-button full-width"
+            disabled={submitting}
+            onClick={() => setReview(null)}
+          >
+            Back to order ticket
+          </button>
+          {practice && !oneClick.on && <button className="text-button full-width" onClick={() => { oneClick.set(true); void place(review); }}><Zap />Place and skip review next time</button>}
+        </Dialog>
+      )}
     </aside>
   );
-};
+}

@@ -4,6 +4,8 @@ import React from 'react';
 import { useUIStore } from '@/store/useUIStore';
 import { useGetUserProfileQuery, useGetAccountDetailsQuery } from '@/store/api/tradingApi';
 import { X, User, ShieldCheck, Mail, Cpu, Layers, DollarSign, LogOut } from 'lucide-react';
+import { useAccountStore } from '@/store/useAccountStore';
+import { disconnectTradingAccount } from '@/lib/accountSwitching';
 
 export const ProfileModal: React.FC = () => {
   const { profileModalOpen, setProfileModalOpen, tradingAccountNo, setIsAuthenticated } = useUIStore();
@@ -13,11 +15,8 @@ export const ProfileModal: React.FC = () => {
   if (!profileModalOpen) return null;
 
   const handleLogout = () => {
-    localStorage.removeItem('trading_token');
-    localStorage.removeItem('access_token');
-    setIsAuthenticated(false);
+    disconnectTradingAccount(useAccountStore.getState().activeId);
     setProfileModalOpen(false);
-    alert('Logged out from trading session.');
   };
 
   return (
