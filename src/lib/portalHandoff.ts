@@ -94,6 +94,12 @@ export function startTerminalSession() {
     }
     const resume = resumableAccount();
     if (resume) enterAccount(resume.id);
+    else if (process.env.NODE_ENV === 'development'
+      && ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)
+      && new URLSearchParams(window.location.search).get('practice') === '1') {
+      switchTradingAccount('practice');
+      useUIStore.getState().grantAccess();
+    }
     else goToPortalSignIn();
   })();
   return starting;

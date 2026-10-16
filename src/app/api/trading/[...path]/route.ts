@@ -138,7 +138,7 @@ async function run(request: NextRequest, route: string, kind: RouteKind, reqId: 
   }
 
   // Order calls go to the broker's trading engine; the path is appended to its routing base.
-  const target = kind === "order" && engine ? new URL(`${engine}/${route}`) : new URL("/" + route, backend);
+  const target = kind === "order" && engine ? new URL(`${engine}/${route}`) : new URL(route, backend);
   if (!mutation)
     for (const key of QUERY_KEYS) {
       const value = request.nextUrl.searchParams.get(key);

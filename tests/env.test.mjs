@@ -13,12 +13,15 @@ const policyUrl = dataUrl(transpile("../src/lib/server/proxyPolicy.ts"));
 const envSource = transpile("../src/lib/server/env.ts").replace(/(["'])\.\/proxyPolicy\1/, JSON.stringify(policyUrl));
 const { parseServerEnv } = await import(dataUrl(envSource));
 
-test("BACKEND_URL is required and reduced to its origin", () => {
+test("BACKEND_URL is required and keeps its path prefix", () => {
   const missing = parseServerEnv({});
   assert.equal(missing.backend, null);
   assert.match(missing.problem, /not set/);
   const ok = parseServerEnv({ BACKEND_URL: "https://api.example.com/some/path?x=1" });
-  assert.equal(ok.backend.href, "https://api.example.com/");
+  assert.equal(ok.backend.href, "https://api.example.com/some/path/");
+  assert.equal(parseServerEnv({ BACKEND_URL: "https://api.example.com" }).backend.href, "https://api.example.com/");
+  const platform = parseServerEnv({ BACKEND_URL: "https://api.example.com/platform/" }).backend;
+  assert.equal(new URL("v1/users/trading/web-session/redeem", platform).href, "https://api.example.com/platform/v1/users/trading/web-session/redeem");
   assert.equal(ok.problem, null);
   assert.match(parseServerEnv({ BACKEND_URL: "::nope" }).problem, /valid URL/);
   assert.match(parseServerEnv({ BACKEND_URL: "https://user:pw@api.example.com" }).problem, /credentials/);

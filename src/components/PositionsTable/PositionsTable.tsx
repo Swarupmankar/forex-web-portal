@@ -33,6 +33,7 @@ import { Dialog } from "@/components/terminal/Dialog";
 import type { Order } from "@/types/trading";
 import { usePracticeStore } from "@/store/usePracticeStore";
 import { practicePnl, type BulkClose } from "@/lib/practice";
+import { runningPnl } from "@/lib/positionPnl";
 import { useOneClick } from "@/components/OrderEntry/useOneClick";
 const money = (n: unknown, signed = false) => {
   if (n === undefined || n === null || n === "" || !Number.isFinite(Number(n))) return "—";
@@ -103,7 +104,7 @@ export function PositionsTable() {
   const demoRecords: Order[] = demo.orders.filter(o=>tab === 'positions' ? o.status === 'OPEN' : tab === 'pending' ? o.status === 'PENDING' : !['OPEN','PENDING'].includes(o.status)).map(o=>({...o,orderType:o.status === "PENDING" ? `${o.orderType} ${o.executionType}` : o.orderType,pnl:practicePnl(o,quotes[o.symbol]),orderStatus:o.reason || o.status,closedAt:o.closedAt}));
   const allRecords: Order[] = practice ? demoRecords :
     tab === "positions"
-      ? orders.data?.openOrders || []
+      ? (orders.data?.openOrders || []).map((o) => ({ ...o, pnl: o.pnl ?? runningPnl(o, livePrices) }))
       : tab === "pending"
         ? orders.data?.pendingOrders || []
         : (

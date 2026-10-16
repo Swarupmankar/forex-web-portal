@@ -11,7 +11,7 @@ import {
 } from "./proxyPolicy";
 
 export interface ServerConfig {
-  /** Backend origin, or null when it must not be used (see `problem`). */
+  /** Backend base URL (origin + path, ending in /), or null when it must not be used (see `problem`). */
   backend: URL | null;
   /** Trading-engine base (origin + routing path, no trailing slash) for order calls, or null. */
   engine: string | null;
@@ -80,7 +80,10 @@ export function parseServerEnv(env: EnvLike): ServerConfig {
   });
 
   const backend = check("BACKEND_URL", env.BACKEND_URL);
-  return typeof backend === "string" ? config(null, backend) : config(new URL(backend.origin), null);
+  // Keep the path: a backend served under a prefix (https://api.example.com/platform) must keep it.
+  return typeof backend === "string"
+    ? config(null, backend)
+    : config(new URL(backend.origin + backend.pathname.replace(/\/*$/, "/")), null);
 }
 
 export function logEvent(level: "info" | "warn" | "error", event: string, message: string) {

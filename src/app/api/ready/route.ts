@@ -17,7 +17,7 @@ async function probe(): Promise<Probe> {
   if (!backend)
     return { status: 503, body: { status: "not_ready", reason: "backend_not_configured" } };
   try {
-    const response = await fetch(new URL("/v1/users/auth/brokers", backend), {
+    const response = await fetch(new URL("v1/users/auth/brokers", backend), {
       headers: { Accept: "application/json" },
       cache: "no-store",
       redirect: "error",
