@@ -1,16 +1,19 @@
 const production = process.env.NODE_ENV === "production";
 const buildId = process.env.GIT_COMMIT_SHA || process.env.VERCEL_GIT_COMMIT_SHA;
 
-// The browser opens the market-data feed directly: socket.io polls over http(s)
-// and upgrades to ws(s), so both schemes are allowed for that origin.
+// The browser opens the market-data feed and the trading engine directly: sockets
+// may poll over http(s) and upgrade to ws(s), so both schemes are allowed per origin.
 function feedOrigins() {
-  try {
-    const { protocol, host } = new URL(process.env.NEXT_PUBLIC_WS_URL ?? "");
-    const secure = protocol === "https:" || protocol === "wss:";
-    return secure ? [`https://${host}`, `wss://${host}`] : [`http://${host}`, `ws://${host}`];
-  } catch {
-    return [];
-  }
+  const { NEXT_PUBLIC_WS_URL, NEXT_PUBLIC_PRICEFEED_URL, NEXT_PUBLIC_ENGINE_URL } = process.env;
+  return [NEXT_PUBLIC_WS_URL, NEXT_PUBLIC_PRICEFEED_URL, NEXT_PUBLIC_ENGINE_URL].flatMap((value) => {
+    try {
+      const { protocol, host } = new URL(value ?? "");
+      const secure = protocol === "https:" || protocol === "wss:";
+      return secure ? [`https://${host}`, `wss://${host}`] : [`http://${host}`, `ws://${host}`];
+    } catch {
+      return [];
+    }
+  });
 }
 
 // Report-only until violations have been reviewed; see docs/operations.md.

@@ -5,6 +5,9 @@ import { usePracticeStore } from "@/store/usePracticeStore";
 import { useUIStore } from "@/store/useUIStore";
 import { useAccountStore } from "@/store/useAccountStore";
 import { practiceMetrics } from "@/lib/practice";
+import { accountFigures, conversionSymbols } from "@/lib/positionPnl";
+import { usePriceStore } from "@/store/usePriceStore";
+import { subscribeSymbol, unsubscribeSymbol } from "@/services/priceSocket";
 
 const value = (v: unknown) =>
   v === undefined || v === null || v === "" ? undefined : Number.isFinite(Number(v)) ? Number(v) : undefined;
@@ -44,19 +47,32 @@ export function useAccountMetrics({ syncAccount = false } = {}): AccountMetrics 
     refetchOnReconnect: true,
   });
   const data = account.currentData?.account ?? account.currentData;
+  const prices = usePriceStore((s) => s.prices);
   useEffect(() => {
     if (syncAccount && !practice && data && activeId && authenticated) useAccountStore.getState().update(activeId, data);
   }, [syncAccount, data, practice, activeId, authenticated]);
+  // Open positions are valued from live quotes, so their symbols and USD conversion pairs stay
+  // subscribed even when no watchlist row or chart shows them. Owned by the footer instance.
+  const open = orders.data?.openOrders;
+  const feedSymbols = syncAccount && !skip && open?.length
+    ? [...new Set([...open.map((o) => o.symbol), ...conversionSymbols(open)])].sort().join(",")
+    : "";
+  useEffect(() => {
+    const symbols = feedSymbols.split(",").filter(Boolean);
+    symbols.forEach(subscribeSymbol);
+    return () => symbols.forEach(unsubscribeSymbol);
+  }, [feedSymbols]);
   if (practice) {
     const m = practiceMetrics(paper, quotes);
     return { ...m, loading: false, error: false, refetch: () => {} };
   }
+  const m = accountFigures(orders.data, orders.data?.balance ?? data?.fundsAvailable, prices);
   return {
-    balance: value(orders.data?.balance ?? data?.balance ?? data?.fundsAvailable),
-    equity: value(data?.equity),
-    margin: value(orders.data?.marginUsed ?? data?.margin),
-    freeMargin: value(orders.data?.freeMargin ?? data?.freeMargin),
-    marginLevel: value(orders.data?.marginLevel ?? data?.marginLevel),
+    balance: value(m.balance),
+    equity: value(m.equity),
+    margin: value(m.margin),
+    freeMargin: value(m.freeMargin),
+    marginLevel: value(m.marginLevel),
     loading: account.isFetching,
     error: account.isError,
     refetch: () => void account.refetch(),
