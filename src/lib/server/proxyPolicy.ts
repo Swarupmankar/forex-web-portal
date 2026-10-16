@@ -31,6 +31,8 @@ export const MESSAGES = {
   unexpected:
     "The account service returned an unexpected response. Please try again.",
   rejected: "The trading service rejected this request.",
+  venueDown:
+    "The trading venue is temporarily unreachable. This request was not sent — please try again shortly.",
   crossOrigin: "This request must come from the terminal.",
   notJson: "Requests must be sent as JSON.",
   tooLarge: "Request is too large.",
@@ -94,15 +96,14 @@ type Body = Record<string, unknown>;
 
 const isObject = (v: unknown): v is Body =>
   typeof v === "object" && v !== null && !Array.isArray(v);
-const finite = (v: unknown): v is number =>
-  typeof v === "number" && Number.isFinite(v);
-const positive = (v: unknown): v is number => finite(v) && v > 0;
-// Float-tolerant "multiple of 0.01, at least 0.01" (0.29 * 100 is 28.999999999999996).
-const lotStep = (v: unknown): v is number => {
-  if (!positive(v)) return false;
-  const steps = Math.round(v * 100);
-  return steps >= 1 && Math.abs(v * 100 - steps) < 1e-6;
-};
+// The engine takes money values as decimal strings ("1.10005"), never JSON numbers, so a
+// price never passes through a binary float. Plain digits only: no sign, exponent or spaces.
+const decimal = (v: unknown): v is string =>
+  typeof v === "string" && /^\d{1,12}(\.\d{1,8})?$/.test(v);
+const positive = (v: unknown): v is string => decimal(v) && Number(v) > 0;
+// A multiple of 0.01, at least 0.01: at most two decimals, checked on the text itself.
+const lotStep = (v: unknown): v is string =>
+  typeof v === "string" && /^\d{1,6}(\.\d{1,2})?$/.test(v) && Number(v) >= 0.01;
 const numericId = (v: unknown) =>
   (typeof v === "number" && Number.isSafeInteger(v) && v > 0) ||
   (typeof v === "string" && /^\d{1,20}$/.test(v) && /[1-9]/.test(v));
@@ -118,7 +119,7 @@ function placeOrder(b: Body, maxLots: number): string | null {
     return "Order side must be BUY or SELL.";
   if (!["MARKET", "LIMIT", "STOP"].includes(b.executionType as string))
     return "Order type must be MARKET, LIMIT or STOP.";
-  if (!lotStep(b.lotSize) || b.lotSize > maxLots)
+  if (!lotStep(b.lotSize) || Number(b.lotSize) > maxLots)
     return `Volume must be between 0.01 and ${maxLots} lots, in steps of 0.01.`;
   if (b.executionType === "MARKET") {
     if (b.limitPrice !== undefined)
@@ -142,9 +143,9 @@ function exitOrder(b: Body): string | null {
 function modifyOrder(b: Body): string | null {
   if (typeof b.cancelOrder !== "boolean")
     return "cancelOrder must be true or false.";
-  if (b.sl !== undefined && !(finite(b.sl) && b.sl >= 0))
+  if (b.sl !== undefined && !decimal(b.sl))
     return "Stop loss must be 0 (remove) or a positive price.";
-  if (b.tp !== undefined && !(finite(b.tp) && b.tp >= 0))
+  if (b.tp !== undefined && !decimal(b.tp))
     return "Take profit must be 0 (remove) or a positive price.";
   return null;
 }
@@ -228,7 +229,7 @@ export function tradingMode(env: EnvLike): TradingMode {
       ? "enabled"
       : "halted";
   if (deployEnv(env) === "production") {
-    const devFeed = env.NEXT_PUBLIC_WS_URL?.includes("mock-ws") ?? false;
+    const devFeed = env.NEXT_PUBLIC_PRICEFEED_URL?.includes("mock-ws") ?? false;
     if (devFeed || !isHttpsUrl(env.BACKEND_URL)) return "halted";
   }
   return mode;

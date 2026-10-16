@@ -126,16 +126,19 @@ async function run(request: NextRequest, route: string, kind: RouteKind, reqId: 
   const valid = validateBody(route, method, body);
   if (!valid.ok) return notSent(422, valid.error, "invalid_body");
 
-  const { backend } = serverEnv();
+  const { backend, engine } = serverEnv();
   if (!backend) return notSent(503, MESSAGES.notConfigured, "not_configured");
 
   if (kind === "order") {
+    // Never fall back to the backend: an order sent to the wrong host fails or reaches the wrong broker.
+    if (!engine) return notSent(503, MESSAGES.notConfigured, "engine_not_configured");
     const { mode, haltedSymbols } = tradingStatus();
     const allowed = gate(kind, route, valid.body, mode, haltedSymbols);
     if (!allowed.ok) return notSent(allowed.status, allowed.message, `mode_${mode}`);
   }
 
-  const target = new URL("/" + route, backend);
+  // Order calls go to the broker's trading engine; the path is appended to its routing base.
+  const target = kind === "order" && engine ? new URL(`${engine}/${route}`) : new URL("/" + route, backend);
   if (!mutation)
     for (const key of QUERY_KEYS) {
       const value = request.nextUrl.searchParams.get(key);
@@ -200,6 +203,8 @@ async function run(request: NextRequest, route: string, kind: RouteKind, reqId: 
       const message = typeof detail.message === "string" ? detail.message : MESSAGES.rejected;
       return { status: upstream, body: { ...detail, message, outcome: "rejected" }, outcome: "rejected" };
     }
+    // The engine answers 503 only when its venue link is down, before anything is sent.
+    if (upstream === 503) return notSent(503, MESSAGES.venueDown, "venue_down");
     if (upstream >= 500) return unknownOutcome(502, `upstream_${upstream}`);
     if (!parsed) return unknownOutcome(502, "non_json");
     return { status: upstream, body: text ? data : undefined, outcome: "ok" };

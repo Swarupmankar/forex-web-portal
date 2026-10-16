@@ -1,0 +1,42 @@
+// Price feed wire schema. Copied verbatim from MOBILE-PRICEFEED-INTEGRATION.md
+// (source of truth: pricefeed-engine/proto/pricefeed.proto). Regenerate the
+// client with `npm run proto:gen` whenever this file changes — never hand-edit
+// src/services/pricefeed/pricefeed.pb.js.
+syntax = "proto3";
+
+package pricefeed;
+
+message ClientMessage {
+  oneof body {
+    Subscribe subscribe = 1;
+    Unsubscribe unsubscribe = 2;
+  }
+}
+
+message Subscribe   { repeated string symbols = 1; bool want_depth = 2; }
+message Unsubscribe { repeated string symbols = 1; }
+
+message ServerMessage {
+  repeated Quote quotes = 1;
+  repeated Book books = 2;
+  repeated SymbolStatus statuses = 3;
+}
+
+message Quote {
+  string symbol = 1;
+  sint64 bid = 2;
+  sint64 ask = 3;
+  sint64 bid_size = 4;
+  sint64 ask_size = 5;
+  int64  ts = 6;
+}
+
+message Book  { string symbol = 1; repeated Level bids = 2; repeated Level asks = 3; int64 ts = 4; }
+message Level { sint64 price = 1; sint64 size = 2; }
+
+message SymbolStatus {
+  string symbol = 1;
+  State state = 2;
+  int64 ts = 3;
+  enum State { STATE_UNSPECIFIED = 0; NO_PRICE = 1; FEED_DOWN = 2; AWAITING_FIRST_BOOK = 3; UNKNOWN_SYMBOL = 4; }
+}

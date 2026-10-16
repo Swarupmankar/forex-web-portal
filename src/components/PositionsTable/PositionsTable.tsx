@@ -460,7 +460,7 @@ export function PositionsTable() {
                       >
                         {String(o.orderType).replace("_", " ")}
                       </span>
-                      <small>{o.lotSize ?? o.volume} lots</small>
+                      <small>{(Number(o.lotSize) > 0 ? o.lotSize : o.lotSizeStore ?? o.lotSize) ?? o.volume} lots</small>
                     </td>
                     <td data-label="Entry price">
                       {formatPrice(

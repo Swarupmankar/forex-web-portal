@@ -12,6 +12,7 @@ import { isQuoteExecutable } from "@/lib/freshness";
 import { volumeSpec, validateVolume, needsReview } from "@/lib/volume";
 import { classifyFailure, findSubmittedOrder } from "@/lib/orderOutcome";
 import { executableQuote } from "@/hooks/useExecutableQuote";
+import { mobileSocketService } from "@/services/mobileSocket";
 import { useExecutionPolicy } from "@/hooks/useExecutionPolicy";
 
 export type SubmitResult =
@@ -106,9 +107,18 @@ export function useOrderSubmit() {
         ws.notify(`${describe(request)} · ${order.status === "OPEN" ? "opened" : "pending order placed"} (practice)`, "success");
         return { ok: true, id: order.id, status: order.status === "OPEN" ? "OPEN" : "PENDING" };
       }
-      await placeRemote({ order: request, idempotencyKey }).unwrap();
-      ui.setBottomTab(request.executionType === "MARKET" ? "positions" : "pending");
-      ws.notify(`${describe(request)} submitted. Check Activity for its execution status.`, "info");
+      // The fill (or a venue rejection) arrives on the notification socket; nothing is queued while it is down.
+      mobileSocketService.ensureConnected();
+      const placed = await placeRemote({ order: request, idempotencyKey }).unwrap();
+      // A-book answers 202 / SENDING: accepted, not filled. The venue can still refuse it.
+      const sending = String(placed?.orderStatus ?? "").toUpperCase() === "SENDING";
+      ui.setBottomTab(request.executionType === "MARKET" && !sending ? "positions" : "pending");
+      ws.notify(
+        sending
+          ? `${describe(request)} sent to the market. Waiting for the fill…`
+          : `${describe(request)} submitted. Check Activity for its execution status.`,
+        "info",
+      );
       return { ok: true, status: "SUBMITTED" };
     } catch (e) {
       if (!practice && classifyFailure(e) === "unknown") {

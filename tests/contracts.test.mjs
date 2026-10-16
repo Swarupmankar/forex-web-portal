@@ -16,7 +16,7 @@ async function source(path) {
 }
 const { normalizeCandles, mergeTick, movingAverage, bucketCandles } =
   await source("../src/lib/chart.ts");
-const { validateTrade, CHART_INTERVALS, normalizeInstruments } = await source(
+const { validateTrade, CHART_INTERVALS, normalizeInstruments, engineOrder, decimalString, fromScaled, normalizeOrderlist } = await source(
   "../src/lib/contracts.ts",
 );
 test("chart normalizes actual backend date format, seconds, milliseconds, sorting and duplicates", () => {
@@ -107,4 +107,29 @@ test("irregular historical timestamps form one coherent selected-interval candle
     { time: 600, open: 10, high: 14, low: 9, close: 13 },
     { time: 660, open: 13, high: 14, low: 12, close: 14 },
   ]);
+});
+
+test("engine orders carry decimal strings and only the documented fields", () => {
+  assert.deepEqual(engineOrder({ symbol: "EURUSD", orderType: "BUY", executionType: "MARKET", lotSize: 0.1, limitPrice: 1.1, sl: 0.1 + 0.2, tp: 1.20005 }), {
+    symbol: "EURUSD", orderType: "BUY", executionType: "MARKET", lotSize: "0.10", sl: "0.3", tp: "1.20005",
+  });
+  assert.equal(engineOrder({ symbol: "EURUSD", orderType: "SELL", executionType: "LIMIT", lotSize: 2, limitPrice: 1.13 }).limitPrice, "1.13");
+  assert.equal(decimalString(81063.9), "81063.9");
+});
+
+test("feed prices are 1e8-scaled integers", () => {
+  assert.equal(fromScaled("114810000"), 1.1481);
+  assert.equal(fromScaled("8106390000000"), 81063.9);
+  assert.equal(fromScaled("5"), 0.00000005);
+  assert.equal(fromScaled("-114810000"), -1.1481);
+  assert.ok(Number.isNaN(fromScaled("1.5")));
+});
+
+test("SENDING orders never show as positions", () => {
+  const list = normalizeOrderlist({
+    openOrders: [{ id: 1, symbol: "EURUSD", orderType: "BUY", orderStatus: "OPEN" }, { id: 2, symbol: "EURUSD", orderType: "BUY", orderStatus: "SENDING", lotSize: "0" }],
+    pendingOrders: [{ id: 3, symbol: "EURUSD", orderType: "BUY", orderStatus: "PENDING" }],
+  });
+  assert.deepEqual(list.openOrders.map((o) => o.id), [1]);
+  assert.deepEqual(list.pendingOrders.map((o) => o.id), [3, 2]);
 });

@@ -51,7 +51,8 @@ const BASE_ENV = {
   TRADING_MODE: "enabled",
   HALTED_SYMBOLS: "",
   GIT_COMMIT_SHA: "abc123",
-  NEXT_PUBLIC_WS_URL: "https://feed.example.com",
+  NEXT_PUBLIC_PRICEFEED_URL: "https://feed.example.com",
+  NEXT_PUBLIC_ENGINE_URL: "https://engine.example.com/broker/acme/real-1",
 };
 const MANAGED = [...Object.keys(BASE_ENV), "TRADING_ENABLED", "VERCEL_GIT_COMMIT_SHA", "BACKEND_ALLOWED_HOSTS"];
 function setEnv(overrides = {}) {
@@ -110,7 +111,7 @@ async function send(mod, method, path, options) {
 
 const PLACE = "v1/users/order/place-order";
 const EXIT = "v1/users/order/exit-order";
-const order = { symbol: "EURUSD", orderType: "BUY", executionType: "MARKET", lotSize: 0.1 };
+const order = { symbol: "EURUSD", orderType: "BUY", executionType: "MARKET", lotSize: "0.1" };
 
 test("denied routes are 404 with request id and no-store, and never reach the backend", async () => {
   const { proxy } = await load();
@@ -182,7 +183,7 @@ test("oversized bodies are 413, invalid JSON is 400 and schema errors are 422", 
   const invalid = await send(proxy, "POST", PLACE, { body: "{not json" });
   assert.equal(invalid.status, 400);
   assert.equal(invalid.body.outcome, "not_sent");
-  const schema = await send(proxy, "POST", PLACE, { body: { ...order, limitPrice: 1.1 } });
+  const schema = await send(proxy, "POST", PLACE, { body: { ...order, limitPrice: "1.1" } });
   assert.equal(schema.status, 422);
   assert.equal(schema.body.message, "Market orders cannot include an entry price.");
   assert.equal(schema.body.outcome, "not_sent");
@@ -196,7 +197,7 @@ test("halted mode blocks orders but keeps reads available", async () => {
   setEnv({ TRADING_MODE: "halted" });
   for (const [method, path, body] of [
     ["POST", PLACE, order],
-    ["POST", EXIT, { orderId: 1, exitLotSize: 0.1 }],
+    ["POST", EXIT, { orderId: 1, exitLotSize: "0.1" }],
     ["PUT", "v1/users/order/modify/9", { cancelOrder: true }],
   ]) {
     const r = await send(proxy, method, path, { body });
@@ -214,8 +215,8 @@ test("the kill switch applies on the next request without reloading", async () =
   const blocked = await send(proxy, "POST", PLACE, { body: order });
   assert.equal(blocked.status, 503);
   assert.match(blocked.body.message, /^Close-only mode/);
-  assert.equal((await send(proxy, "POST", EXIT, { body: { orderId: "5", exitLotSize: 0.05 } })).status, 200);
-  assert.equal((await send(proxy, "PUT", "v1/users/order/modify/5", { body: { cancelOrder: false, sl: 0, tp: 1.2 } })).status, 200);
+  assert.equal((await send(proxy, "POST", EXIT, { body: { orderId: "5", exitLotSize: "0.05" } })).status, 200);
+  assert.equal((await send(proxy, "PUT", "v1/users/order/modify/5", { body: { cancelOrder: false, sl: "0", tp: "1.2" } })).status, 200);
   const res = await status.GET();
   const json = await res.json();
   assert.equal(json.mode, "close-only");
@@ -236,7 +237,7 @@ test("orders forward the validated body, auth, request id, client IP and idempot
   assert.equal(status, 201);
   assert.deepEqual(body, { orderId: 77 });
   const [{ url, init }] = calls;
-  assert.equal(url, "https://api.example.com/v1/users/order/place-order");
+  assert.equal(url, "https://engine.example.com/broker/acme/real-1/v1/users/order/place-order");
   assert.equal(init.method, "POST");
   assert.deepEqual(JSON.parse(init.body), order);
   assert.equal(init.headers.get("authorization"), "Bearer t0k");
@@ -257,7 +258,7 @@ test("order timeouts and post-send network errors are 504 'unknown'; reads keep 
   upstream = async () => {
     throw Object.assign(new TypeError("fetch failed"), { cause: { code: "ECONNRESET" } });
   };
-  assert.equal((await send(proxy, "POST", EXIT, { body: { orderId: 1, exitLotSize: 1 } })).body.outcome, "unknown");
+  assert.equal((await send(proxy, "POST", EXIT, { body: { orderId: 1, exitLotSize: "1" } })).body.outcome, "unknown");
   const read = await send(proxy, "GET", "v1/users/order/orders");
   assert.equal(read.status, 502);
   assert.equal(read.body.message, "The account service is temporarily unavailable. Please try again.");
@@ -287,6 +288,11 @@ test("backend order responses: 4xx is 'rejected', 5xx and unreadable success are
   const unreadable = await send(proxy, "POST", PLACE, { body: order });
   assert.equal(unreadable.status, 502);
   assert.equal(unreadable.body.outcome, "unknown");
+  // The engine's 503 means its venue link is down and nothing was sent: safe to retry.
+  upstream = async () => new Response(JSON.stringify({ code: 503, message: "venue down" }), { status: 503 });
+  const venueDown = await send(proxy, "POST", PLACE, { body: order });
+  assert.equal(venueDown.status, 503);
+  assert.equal(venueDown.body.outcome, "not_sent");
   upstream = async () => new Response(null, { status: 204 });
   const empty = await call(proxy, request("DELETE", "v1/users/watchlist/delete-stock/3"), "v1/users/watchlist/delete-stock/3");
   assert.equal(empty.status, 204);
@@ -356,7 +362,7 @@ test("ready reports an unhealthy backend", async () => {
 });
 
 test("production on the development feed reports halted", async () => {
-  setEnv({ DEPLOY_ENV: "production", NEXT_PUBLIC_WS_URL: "https://mock-ws-chart.onrender.com" });
+  setEnv({ DEPLOY_ENV: "production", NEXT_PUBLIC_PRICEFEED_URL: "https://mock-ws-chart.onrender.com" });
   const { status, proxy } = await load();
   assert.equal((await (await status.GET()).json()).mode, "halted");
   assert.equal((await send(proxy, "POST", PLACE, { body: order })).status, 503);

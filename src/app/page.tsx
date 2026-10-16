@@ -16,6 +16,7 @@ import {
   subscribeSymbol,
   unsubscribeSymbol,
 } from "@/services/priceSocket";
+import { mobileSocketService } from "@/services/mobileSocket";
 import { useUIStore } from "@/store/useUIStore";
 import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import { usePracticeStore } from "@/store/usePracticeStore";
@@ -53,8 +54,13 @@ export default function TerminalPage() {
   }, []);
   useEffect(() => {
     if (practice || access !== "granted") return;
+    // Order fills and venue rejections arrive here; it is opened before any order can be placed.
+    mobileSocketService.start();
     initPriceSocket();
-    return stopPriceSocket;
+    return () => {
+      mobileSocketService.stop();
+      stopPriceSocket();
+    };
   }, [practice, generation, access]);
   useTradingStatusPolling(true);
   useInactivityLock();

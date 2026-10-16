@@ -299,7 +299,7 @@ export function useChartEngine({ host, rsiHost, candles, symbol, source, identit
             return info;
         } });
         // Solid bid and dashed ask from the executable quote, moved in place on every quote. Their axis
-        // labels carry the spread; the series' own last-price line stands in while they are hidden.
+        // labels show the bid and ask prices; the series' own last-price line stands in while they are hidden.
         const bidLine = main.createPriceLine({ price: 0, color: FALLBACK_PALETTE.dark.down, lineWidth: 1, lineStyle: LineStyle.Solid, lineVisible: false, axisLabelVisible: false, title: '' });
         const askLine = main.createPriceLine({ price: 0, color: FALLBACK_PALETTE.dark.up, lineWidth: 1, lineStyle: LineStyle.Dashed, lineVisible: false, axisLabelVisible: false, title: '' });
         let quoteShown: boolean | undefined;

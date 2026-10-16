@@ -74,7 +74,7 @@ export const usePracticeStore = create<PracticeState>()(persist((set, get) => ({
         const previous = get().quotes;
         const quotes = Object.fromEntries(Object.entries(SAMPLE_QUOTES).map(([symbol, base], i) => {
             const wave = Math.sin(now / 23000 + i) * 0.00015 + Math.sin(now / 7100 + i * 2) * 0.00006;
-            const bid = base.bid * (1 + wave), ask = bid + base.ask - base.bid;
+            const bid = base.bid * (1 + wave), ask = bid;
             return [symbol, { ...base, bid, ask, change24h: undefined, timestamp: now, direction: bid > (previous[symbol]?.bid ?? bid) ? 'up' : bid < (previous[symbol]?.bid ?? bid) ? 'down' : 'same' }];
         })) as Quotes;
         if (!settle) {

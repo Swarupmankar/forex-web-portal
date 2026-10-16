@@ -1,4 +1,4 @@
-import type { SymbolItem } from "@/types/trading";
+import type { Order, OrderlistResponseDTO, SymbolItem } from "@/types/trading";
 // Verified against Paper Trading's useChart.ts and services/models/login.ts.
 export const CHART_INTERVALS: Record<
   string,
@@ -19,6 +19,43 @@ export interface TradeRequest {
   limitPrice?: number;
   sl?: number;
   tp?: number;
+}
+// The trading engine takes every amount as a decimal string ("0.10", "1.10005") and rejects
+// JSON numbers. Rounding to 8 places (the feed's 1e8 scale) drops float noise such as
+// 0.1 + 0.2 = 0.30000000000000004 before the value becomes text.
+export const decimalString = (n: number) => String(Number(n.toFixed(8)));
+/** Price-feed 1e8-scaled integer text to a number, via its exact decimal ("114810000" -> 1.1481). */
+export function fromScaled(text: string): number {
+  const negative = text.startsWith("-");
+  const digits = (negative ? text.slice(1) : text).padStart(9, "0");
+  if (!/^\d+$/.test(digits)) return NaN;
+  return Number(`${negative ? "-" : ""}${digits.slice(0, -8)}.${digits.slice(-8)}`);
+}
+export function engineOrder(order: TradeRequest) {
+  // Only the documented fields: the engine answers 400 to any unknown key.
+  return {
+    symbol: order.symbol,
+    orderType: order.orderType,
+    executionType: order.executionType,
+    lotSize: order.lotSize.toFixed(2),
+    ...(order.executionType !== "MARKET" && order.limitPrice !== undefined && { limitPrice: decimalString(order.limitPrice) }),
+    ...(order.sl !== undefined && { sl: decimalString(order.sl) }),
+    ...(order.tp !== undefined && { tp: decimalString(order.tp) }),
+  };
+}
+// Under A-book a placed order is SENDING (lotSize "0", no entry price) until the venue fills it.
+// It must never show as a position, so unfilled rows found among open orders move to pending.
+export function normalizeOrderlist(list: OrderlistResponseDTO): OrderlistResponseDTO {
+  const unfilled = (o: Order) => ["SENDING", "PENDING"].includes(String(o.orderStatus ?? "").toUpperCase());
+  const open = list?.openOrders ?? [];
+  if (!open.some(unfilled)) return list;
+  const pending = list.pendingOrders ?? [];
+  const known = new Set(pending.map((o) => String(o.id)));
+  return {
+    ...list,
+    openOrders: open.filter((o) => !unfilled(o)),
+    pendingOrders: [...pending, ...open.filter((o) => unfilled(o) && !known.has(String(o.id)))],
+  };
 }
 export function normalizeInstruments(response: unknown): SymbolItem[] {
   const r = response as any;
@@ -52,8 +89,6 @@ export function normalizeInstruments(response: unknown): SymbolItem[] {
         category,
         pipSize: Number(i.pipSize ?? i.pip_size) || undefined,
         contractSize: Number(i.contractSize ?? i.contract_size) || undefined,
-        spreadPips:
-          i.spreadPips === undefined ? undefined : Number(i.spreadPips),
         minLots: Number(i.minLots ?? i.min_lot ?? i.minLot) || undefined,
         maxLots: Number(i.maxLots ?? i.max_lot ?? i.maxLot) || undefined,
         lotStep: Number(i.lotStep ?? i.lot_step) || undefined,
@@ -100,22 +135,4 @@ export function validateTrade(
       return "The pending price is on the wrong side of the market for this order type.";
   }
   return null;
-}
-
-export function accountQuote(
-  tick: import("@/types/trading").PriceTick | undefined,
-  meta?: import("@/types/trading").SymbolItem,
-) {
-  if (!tick) return undefined;
-  const spread = Number(meta?.spreadPips),
-    pip = Number(meta?.pipSize);
-  if (
-    meta?.spreadPips === undefined ||
-    !Number.isFinite(spread) ||
-    spread < 0 ||
-    !Number.isFinite(pip) ||
-    pip <= 0
-  )
-    return tick;
-  return { ...tick, ask: tick.bid + spread * pip, spread: spread * pip };
 }

@@ -109,7 +109,7 @@ export const TIMEFRAMES: Record<string, number> = {
   "1D": 86400,
 };
 // Preview data is used only without a configured feed or an authenticated account.
-export const PREVIEW_FEED = !process.env.NEXT_PUBLIC_WS_URL;
+export const PREVIEW_FEED = !process.env.NEXT_PUBLIC_PRICEFEED_URL;
 export const CLIENT_PORTAL =
   process.env.NEXT_PUBLIC_CLIENT_PORTAL_URL || "https://my.movementmarkets.com";
 export const errorMessage = (error: unknown, fallback: string) => {
@@ -118,6 +118,6 @@ export const errorMessage = (error: unknown, fallback: string) => {
 };
 
 export const DEVELOPMENT_FEED =
-  process.env.NEXT_PUBLIC_WS_URL?.includes("mock-ws") ?? false;
+  process.env.NEXT_PUBLIC_PRICEFEED_URL?.includes("mock-ws") ?? false;
 export const TRADING_ENABLED =
   process.env.NEXT_PUBLIC_TRADING_ENABLED === "true" && !DEVELOPMENT_FEED;

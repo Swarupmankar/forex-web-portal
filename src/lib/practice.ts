@@ -63,7 +63,7 @@ export function placePractice(a: PracticeAccount, request: TradeRequest, quotes:
         throw new Error('Not enough virtual free margin. Reduce the volume or close a position.');
     const order: PracticeOrder = { ...request, id: `P${a.sequence}`, status: request.executionType === 'MARKET' ? 'OPEN' : 'PENDING', openPrice: entry, margin, createdAt: new Date(now).toISOString(), pnl: 0 };
     if (order.status === 'OPEN' && margin - practicePnl(order, q) > practiceMetrics(a, quotes).freeMargin)
-        throw new Error('Not enough virtual margin to cover this trade and its spread.');
+        throw new Error('Not enough virtual margin to cover this trade.');
     return { ...a, sequence: a.sequence + 1, orders: [order, ...a.orders] };
 }
 export function managePractice(a: PracticeAccount, id: string, action: 'close' | 'cancel' | 'edit', quotes: Quotes, levels: {

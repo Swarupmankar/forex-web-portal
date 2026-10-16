@@ -604,17 +604,6 @@ kbd {
   border-color: currentColor;
   background: color-mix(in srgb, currentColor 5%, transparent);
 }
-.spread-line {
-  display: flex;
-  justify-content: space-between;
-  color: var(--mm-ink-2);
-  font-size: 10px;
-  margin: 9px 1px 17px;
-}
-.spread-line small {
-  font-size: 9px;
-  color: var(--mm-ink-3);
-}
 .field-label {
   display: flex;
   flex-direction: row;
@@ -1102,9 +1091,6 @@ kbd {
   }
   .quote-side {
     padding: 14px;
-  }
-  .spread-line {
-    font-size: 12px;
   }
   .risk-helper {
     max-width: none;
@@ -1653,7 +1639,6 @@ kbd {
 
 /* Legibility floor: nothing in the terminal renders below 10px. */
 .execution-notice small,
-.spread-line small,
 .quote-side > span > span,
 .trade-marker.is-secondary { font-size: 10px; }
 /* Activity height scales with the viewport; short desktop screens (e.g. 1366x768) keep the chart usable. */

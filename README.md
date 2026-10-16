@@ -15,7 +15,7 @@ Keyboard shortcuts: `/` instrument search; `A` price alert; `?` help; Escape clo
 
 Practice is the default mode, with $10,000 of virtual USD and eight instruments. It uses a separate simulated quote stream and browser-local account store (`mm-terminal-practice-v1`). No order, edit, close, cancel, or reset in this mode calls the backend.
 
-Market buys fill at ask and sells at bid. Closing uses the opposite quote; P&L includes the spread and USDJPY results convert to USD. Market, limit and stop orders, stop loss/take profit, edit exits, close, cancel, history/CSV and a reset control are available. Practice uses 1:100 leverage, zero commission/swap and a 50% margin stop-out. It is a UI simulator, not a representation of actual execution or costs. Pending and exit orders run only while practice mode is open; no overnight execution is implied. Orders persist in this browser, with no cross-device or multi-tab synchronization guarantee. Practice and connected price alerts are separated.
+Market buys fill at ask and sells at bid. Practice quotes use a single price (ask equals bid). Closing uses the opposite quote and USDJPY results convert to USD. Market, limit and stop orders, stop loss/take profit, edit exits, close, cancel, history/CSV and a reset control are available. Practice uses 1:100 leverage, zero commission/swap and a 50% margin stop-out. It is a UI simulator, not a representation of actual execution or costs. Pending and exit orders run only while practice mode is open; no overnight execution is implied. Orders persist in this browser, with no cross-device or multi-tab synchronization guarantee. Practice and connected price alerts are separated.
 
 The terminal has no login or sign-up of its own. Users sign in to the client portal and press **Trade** on a trading account; the portal asks the backend (`POST /v1/users/trading/web-session`) for a single-use code valid for 60 seconds and opens the terminal at `/#handoff=<code>`. The terminal strips the code from the URL and redeems it (`POST /v1/users/trading/web-session/redeem`) for a session on every active account of that user, with the chosen one open. Opening the terminal without a code or a session in that tab redirects to `NEXT_PUBLIC_CLIENT_PORTAL_URL/accounts` (behind the portal login). A reload resumes the account the tab had open.
 
@@ -49,7 +49,8 @@ Copy `.env.example` to `.env.local` and configure. Operational detail (kill swit
 | TRADING_MODE | server only | Runtime kill switch: `enabled`, `close-only` or `halted`. Falls back to `TRADING_ENABLED`. |
 | HALTED_SYMBOLS | server only | Comma list of symbols that cannot receive new orders. |
 | TRADING_ENABLED | server only | Legacy gate used when `TRADING_MODE` is unset. |
-| NEXT_PUBLIC_WS_URL | public | Streaming service URL. The `mock-ws` development feed never allows connected execution. |
+| NEXT_PUBLIC_ENGINE_URL | public | Broker trading-engine base (with its `/broker/<broker>/<server>` path). Place / modify / exit orders are proxied here, and the browser opens `/ws/mobile` on it for fills and rejections. |
+| NEXT_PUBLIC_PRICEFEED_URL | public | Broker price-feed base; the browser opens `/ws/prices` (protobuf, prices scaled by 1e8). A `mock-ws` URL never allows connected execution. |
 | NEXT_PUBLIC_CLIENT_PORTAL_URL | public | Funding, profile and portal destination. |
 | NEXT_PUBLIC_TRADING_ENABLED | public, legacy | No longer gates orders; the UI reads `GET /api/trading/status` at runtime. |
 
@@ -58,13 +59,13 @@ Never put credentials or API secrets in NEXT_PUBLIC variables. The terminal poll
 ### Order safety (connected accounts)
 
 - Every order, close and modify carries an `Idempotency-Key`. If the proxy can't confirm the outcome (timeout, lost response), the ticket shows "Confirming…", blocks new orders and polls open orders for up to 30 s, then reports "confirmed #id" or "not found — safe to try again". It never invites a blind retry.
-- The ticket, chart and submit path share one executable quote (account spread markup applied), one volume rule (instrument limits, capped at the proxy's 100 lots / 0.01 steps) and one duplicate/in-flight guard. Orders of 10 lots or more always open a review.
+- The ticket, chart and submit path share one executable quote (the live feed bid and ask as received), one volume rule (instrument limits, capped at the proxy's 100 lots / 0.01 steps) and one duplicate/in-flight guard. Orders of 10 lots or more always open a review.
 - Quotes older than 5 s, or arriving more than 2 s late, can't be traded on.
 - A 401 on a background read is confirmed once before the session is treated as expired; the account stays listed as ended and the terminal shows a session-ended screen linking back to the client portal (other accounts still signed in can be continued from there). Real accounts lock after 15 minutes without input.
 
 ## Before production release
 
-Verify authenticated account/position/history/watchlist behavior with a test trading account; the source contracts are mapped but no trading-account credentials were supplied for this new terminal. Confirm currency, instrument precision, available intervals, volume limits and spread metadata with the backend. BTC/ETH historical requests currently return a backend error in the local integration; the terminal surfaces this cleanly. Supply a production price feed and complete order/close/edit/cancel staging acceptance after the FIX engine is available. Keep both execution gates off until then.
+Verify authenticated account/position/history/watchlist behavior with a test trading account; the source contracts are mapped but no trading-account credentials were supplied for this new terminal. Confirm currency, instrument precision, available intervals, and volume limits with the backend. BTC/ETH historical requests currently return a backend error in the local integration; the terminal surfaces this cleanly. Supply a production price feed and complete order/close/edit/cancel staging acceptance after the FIX engine is available. Keep both execution gates off until then.
 
 The original hardcoded deposit address, fabricated history in connected mode, fake order-success fallbacks, invented brokers/servers and fake latency indicators have been removed. Funding is handled by the existing client portal.
 

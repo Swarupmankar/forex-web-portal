@@ -90,13 +90,13 @@ Some small fixes also score 3 but affect less of the product: iOS zoom, focus re
 - **Why:** P&L trails price by 5s and equity by 15s. It is the most visible sign of a non-professional terminal, and it can put the wrong positions into a "close profitable" run.
 - **Where:** `page.tsx:74-80` (equity comes only from the 15s query at :78), `risk.ts:8`, the USD check at `FooterBar.tsx:21`.
 
-**10. Set SL/TP in pips, $ or % of equity, and show pip value and spread in pips**: impact 5 · **M** · no backend · score 2.5
+**10. Set SL/TP in pips, $ or % of equity, and show pip value**: impact 5 · **M** · no backend · score 2.5
 - **What:**
   - Add `pipSize` to INSTRUMENTS (majors 0.0001, JPY 0.01, XAU 0.1, XAG 0.01, crypto 1), preferring backend metadata when it exists.
   - Add `pipValue`, `levelFromOffset` and `offsetFromLevel` to `risk.ts`.
   - Store SL/TP drafts as `{mode, value}` and recompute the price from the live quote every render.
   - Add a Price · Pips · $ · % switch, with a hint under each field such as "1.11420 · −22.0 pips · −$22.00 · 0.22%".
-  - Show "Spread 1.2 pips" and "Pip value $10/lot", add a $/% toggle to size-by-risk, and show the pip distance in the Positions SL/TP cells.
+  - Show "Pip value $10/lot", add a $/% toggle to size-by-risk, and show the pip distance in the Positions SL/TP cells.
 - **Why:** MT5 and cTrader traders set stops as "20 pips" or "0.5% risk". Today, switching Buy to Sell keeps a stop that validation then rejects.
 - **Where:** `OrderEntry.tsx:79-85,203-209,297-326`, `market.ts:2-67` (no pipSize, although `types/trading.ts:12` and `contracts.ts:53` have it), `risk.ts:4-10`, `ChartDraftProtection.tsx:17`, `PositionsTable.tsx:462-473`.
 
@@ -126,13 +126,13 @@ Some small fixes also score 3 but affect less of the product: iOS zoom, focus re
 ## Elite trader experience
 
 - **Risk limits (prop-firm style):** daily loss ($/%), maximum risk per trade and maximum open lots. When a limit is hit, Buy/Sell lock with "Daily loss limit reached · resets 00:00 UTC" and closing stays available. Enforced in practice, advisory for connected accounts. `practice.ts:61-66` checks only free margin, and nothing in src tracks daily loss or drawdown. **M**
-- **Position action menu:** Move SL to break-even (entry ± spread buffer), Reverse (a single-step `reversePractice`; connected accounts get a review dialog that explains a partial failure), and Add (fills the ticket). Also change the validation text to "current price". `PositionsTable.tsx:483-513`, `ChartPositionDock.tsx:42-44`, `practice.ts:69`, `contracts.ts:79-82`. **M**
+- **Position action menu:** Move SL to break-even (entry ± a small buffer), Reverse (a single-step `reversePractice`; connected accounts get a review dialog that explains a partial failure), and Add (fills the ticket). Also change the validation text to "current price". `PositionsTable.tsx:483-513`, `ChartPositionDock.tsx:42-44`, `practice.ts:69`, `contracts.ts:79-82`. **M**
 - **Connected account events socket:** replace the unused `mobileSocket.ts` with `accountEvents.ts`. It reconnects with backoff and jitter, has a heartbeat, filters to the active account, removes duplicates, refreshes Orders/Account/History, shows a sticky banner for MARGIN_CALL and STOP_OUT, and lets polling slow to 15–30s. `mobileSocket.ts:1-19,37,42`. **M** · **backend** (token outside the URL, via a first-message auth or a stream ticket)
-- **Realistic practice prices on one price path:** a seeded `practiceFeed.ts` with per-asset volatility (EURUSD about 7% … BTC about 55%), mean reversion, jumps and a wider spread at rollover. History comes from the same generator, so chart, ticks and fills agree across timeframes and reloads. `usePracticeStore.ts:44-47` (a ±0.021% sine wave), `chart.ts:55-76`, `TradingChart.tsx:44`. **M**
+- **Realistic practice prices on one price path:** a seeded `practiceFeed.ts` with per-asset volatility (EURUSD about 7% … BTC about 55%), mean reversion and jumps. History comes from the same generator, so chart, ticks and fills agree across timeframes and reloads. `usePracticeStore.ts:44-47` (a ±0.021% sine wave), `chart.ts:55-76`, `TradingChart.tsx:44`. **M**
 - **Market hours and sessions:** a `sessions.ts` with New York schedules that follow daylight saving. Closed markets get a watchlist pill and "Market closed · opens Sun 22:00 UTC (in 14h)" on the chart. Market orders are disabled while pending orders are still allowed. The footer tells "Markets closed" apart from "Feed stale" and shows a Sydney/Tokyo/London/NY strip. Practice holds prices for closed markets and applies the weekend gap on reopen. `usePracticeStore.ts:41-48`, `OrderEntry.tsx:155-157`, `FooterBar.tsx:62-63,71-73`. **M**
 - **Performance tab:** win rate, profit factor, expectancy (in $ and R), maximum drawdown, streaks and holding time, broken down by symbol, side and hour, with an equity curve. Adds a "Today +$123.40" chip to the account selector. The only total today is `PositionsTable.tsx:520-527`. **M**
 - **Trade detail dialog:** timeline, first and final SL/TP, R multiple, slippage, worst and best price during the trade (MAE/MFE), and swap/commission. The CSV gains SL, TP, Reason, Pips, Duration and R. Today an edit overwrites SL/TP at `practice.ts:89`. **M** · **backend** (closedAt, exitPrice and closeReason)
-- **Instrument spec sheet and a fuller watchlist:** an (i) button shows contract size, pip value, min/max/step lots, spread, leverage, margin per lot, swaps and trading hours. An optional wider watchlist adds Ask, Spread and Day high/low. `types/trading.ts:3-22` (the fields exist but nothing shows them), `MarketWatch.tsx:75-90,86-88`. **M**
+- **Instrument spec sheet and a fuller watchlist:** an (i) button shows contract size, pip value, min/max/step lots, leverage, margin per lot, swaps and trading hours. An optional wider watchlist adds Ask and Day high/low. `types/trading.ts:3-22` (the fields exist but nothing shows them), `MarketWatch.tsx:75-90,86-88`. **M**
 - **Drawing tools and alerts on the chart:** horizontal line, ray, trendline, rectangle, fib, measure (in pips) and text, each built as a chart primitive anchored to {time, price} and saved per symbol. Alerts appear as draggable bell lines, with "Add alert at…" on the price axis. `TradingChart.tsx:64`, `WorkspaceTools.tsx:55-58` (the altKey guard needs relaxing for the new hotkeys). **L**
 - **Indicator engine:** multiple instances (e.g. EMA 20/50/200), MACD, ATR in pips, Stochastic, Donchian and daily pivots, extra oscillator panes that stay in sync, and presets. `indicators.ts:2,8-9`, `useChartEngine.ts:65-69,75-78`. **L**
 - **Intervals and time zones:** 30m, 1W and 1M. Daily bars roll at 17:00 New York (following daylight saving, so no Sunday stub bar) and weeks start at the Sunday open. Add a time-zone picker and session-break lines. `market.ts:103-110`, `chart.ts:99,122`, `useChartEngine.ts:60`. **M**
@@ -148,7 +148,7 @@ Some small fixes also score 3 but affect less of the product: iOS zoom, focus re
 
 ## UI that looks and feels premium
 
-- **Prices with enlarged pip digits:** `splitPrice()` renders head, large pip digits and a raised tail in the ticket, chart dealing bar and chart heading, with a spread pill between Sell and Buy. `OrderEntry.tsx:198`, `ChartTradeControls.tsx:76,78`. **M** (needs pipSize from #10)
+- **Prices with enlarged pip digits:** `splitPrice()` renders head, large pip digits and a raised tail in the ticket, chart dealing bar and chart heading. `OrderEntry.tsx:193`, `ChartTradeControls.tsx:76,78`. **M** (needs pipSize from #10)
 - **`LivePrice` component:** a 450ms flash on each tick (at most every 250ms), a direction arrow, and grey text with a tooltip when stale. Price direction is computed at `usePriceStore.ts:36-41` but nothing displays it, and the watchlist status dot never gets its "connected" colour (`MarketWatch.tsx:359`). **M**
 - **One number and time formatter:** `lib/format.ts` shows money with a true minus sign, thousands separators and "—" for missing values, and a UTC / Local / Server time setting. All numeric columns get right alignment. It replaces 6 formatters: `OrderEntry.tsx:37-38`, `PositionsTable.tsx:33-44`, `ChartPositionOverlay.tsx:14`, `ChartPositionDock.tsx:41`, `AccountSwitcher.tsx:18-22`, `FooterBar.tsx:44-49`. **M**
 - **Type scale and density modes:** size tokens, a 10px minimum enforced by a test, and compact/comfortable density. 51 declarations are 7–9px, the minimum-size rule covers only 6 selectors (`globals.css:2976-2982`), and table text gets smaller on larger screens (2583 vs 2627). **M**
@@ -210,7 +210,7 @@ Some small fixes also score 3 but affect less of the product: iOS zoom, focus re
 - **Keep the feed timestamp** instead of discarding it (`priceSocket.ts:28`, `usePriceStore.ts:22,35`). *(first step of #5)*
 - **Reload chart history on reconnect and focus** (`TradingChart.tsx:42`).
 - **Watchlist status dot:** drive it from the connection and staleness (`MarketWatch.tsx:359`).
-- **Pip size and spread in pips:** add `pipSize` and a `pips()` helper, then show "Spread 1.2 pips" instead of "price units" (`market.ts:2-67`, `OrderEntry.tsx:203-209`).
+- **Pip size:** add `pipSize` and a `pips()` helper (`market.ts:2-67`).
 - **Error boundaries for the four panels** (`page.tsx:98-103`). *(#2)*
 - **Theme set before first paint,** plus `color-scheme` and `themeColor` (`layout.tsx:18-23`).
 - **iOS zoom:** 16px text in inputs on touch screens, and a "done" enter key on lots, entry, SL and TP (`OrderEntry.tsx:227-236,263-270,299-318`).
@@ -263,17 +263,10 @@ Some small fixes also score 3 but affect less of the product: iOS zoom, focus re
 
 ## Gaps found by the completeness review
 
-- **Chart, Activity and ticket show different prices for connected accounts (quote parity)** · **S** · no backend
-  - **Evidence:**
-    - `accountQuote()` (`contracts.ts:104-120`) rebuilds the account ask as bid + `spreadPips × pipSize`. Only `OrderEntry.tsx:64` and `useOrderSubmit.ts:49` call it.
-    - The chart dealing bar uses the raw feed quote (`ChartTradeControls.tsx:26,29`). That raw ask is the Buy price it shows (:78), the price it validates against (:50,57) and the price `pendingAtPrice` classifies against (:56).
-    - `PositionsTable.tsx:120-123` values SELL positions at the raw ask, and `TradingChart.tsx:27` also uses the raw tick.
-    - **Result:** on an account with a spread markup, the chart shows one Buy price and the ticket another. A chart-picked entry between the two is called LIMIT by the chart, then submit rejects it as "wrong side of the market". Floating P&L on SELL positions looks better than it is.
-    - The roadmap's Bid/Ask lines (#3) and live P&L (#9) would be built on the same raw quote.
-  - **Proposal:**
-    - Add `lib/quotes.ts` with `useExecutableQuote(symbol)`, one selector for practice, preview and connected.
-    - Use it everywhere a price is shown or checked: ticket, chart dealing bar, `pendingAtPrice`, Positions current price, alerts, #3 and #9.
-    - Add a test that the chart and the ticket get the same `{bid, ask}` from the same inputs.
+- **Chart, Activity and ticket show the same prices (quote parity)** · resolved
+  - The backend no longer applies any per-account price markup: connected accounts trade at the price feed's own bid and ask. `useExecutableQuote(symbol)` (`hooks/useExecutableQuote.ts`) is the one selector for practice, preview and connected quotes, and returns the feed tick as received.
+  - The ticket, chart dealing bar, `pendingAtPrice` and Positions current price all read it, so they always agree.
+  - Still open: a test that the chart and the ticket get the same `{bid, ask}` from the same inputs.
 
 - **Account currency and cross-pair conversion are left out; the roadmap accepts "—"** · **M** · no backend
   - **Evidence:**
@@ -301,14 +294,14 @@ Some small fixes also score 3 but affect less of the product: iOS zoom, focus re
     - Store requested price, fill price and latency on the order for the CSV and for "average slippage (positive vs negative)" in Performance. This also serves as a best-execution record.
     - Practice: optional 100–300ms latency, filling at the quote at that later moment.
 
-- **Trading costs are invisible: spread, commission and swap** · **M** · **backend** (swap and commission rates)
+- **Trading costs are invisible: commission and swap** · **M** · **backend** (swap and commission rates)
   - **Evidence:**
     - `Order` has `swap` and `commission` (`types/trading.ts:67-68`), but PositionsTable never shows them (columns :418-474; CSV header :128).
     - The ticket summary (`OrderEntry.tsx:333-346`) shows margin and reward:risk but no cost.
     - Practice says "no commission or swap" (`OrderEntry.tsx:441`, `AccountSwitcher.tsx:72`), so holding a trade for a week costs nothing.
     - The roadmap mentions swap and commission only inside the trade detail dialog.
   - **Proposal:**
-    - Add a ticket "Cost" row: "Spread $12.00 · Commission $7.00 · Swap −$3.20/night (×3 Wed)".
+    - Add a ticket "Cost" row: "Commission $7.00 · Swap −$3.20/night (×3 Wed)".
     - Add Swap, Commission and Net P&L columns to Positions. The totals row and the CSV use net P&L.
     - Practice: an optional swap charged at the 17:00 New York roll, tripled on Wednesday, from a static rates table.
 
@@ -340,14 +333,13 @@ Some small fixes also score 3 but affect less of the product: iOS zoom, focus re
     - Practice: add "Open a live account" as a conversion prompt.
 
 - **No economic calendar or warning before high-impact events** · **M** · **backend / data vendor**
-  - **Evidence:** searching src for calendar, economic or news finds nothing relevant. The roadmap's sessions item covers market hours but not scheduled releases like NFP, which widen spreads and stop traders out.
+  - **Evidence:** searching src for calendar, economic or news finds nothing relevant. The roadmap's sessions item covers market hours but not scheduled releases like NFP, which move prices sharply and stop traders out.
   - **Proposal:**
     - Add `/api/calendar`, proxying a vendor with a 5-minute cache.
     - Add an Activity "Calendar" tab filtered to the currencies in the watchlist and open positions.
     - Add impact-coloured flags on the chart time axis showing actual, forecast and previous.
     - Show a ticket and one-click chip such as "USD NFP in 4 min · high impact", plus a badge on positions that are exposed.
-    - Offer a "notify 15 min before" option. Practice widens its spread around events.
-
+    - Offer a "notify 15 min before" option.
 - **Release safety and client-side signals for a terminal left open for days** · **M** · no backend
   - **Evidence:**
     - `next.config.mjs:1-14` has no `deploymentId`.

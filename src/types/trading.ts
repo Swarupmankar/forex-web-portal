@@ -8,7 +8,6 @@ export interface SymbolItem {
   baseCurrency?: string;
   quoteCurrency?: string;
   digits?: number;
-  spreadPips?: number;
   pipSize?: number;
   contractSize?: number;
   minLots?: number;
@@ -26,7 +25,6 @@ export interface PriceTick {
   bid: number;
   ask: number;
   mid?: number;
-  spread?: number;
   change24h?: number;
   direction?: 'up' | 'down' | 'same';
   // Local time the quote arrived (ms). Freshness is measured from this.
@@ -47,13 +45,14 @@ export interface OrderDetailsDTO {
   orderId?: number;
   entryPrice?: string | number | null;
   exitPrice?: string | number | null;
-  entrySpread?: string | number | null;
   entryLeverage?: number;
   entryBid?: string | number | null;
 }
 
 export interface Order {
   id: string | number;
+  /** Lots originally requested; lotSize is what is open now ("0" while SENDING). */
+  lotSizeStore?: string;
   tradingAccountId?: number;
   symbol: string;
   orderType: OrderType | string;

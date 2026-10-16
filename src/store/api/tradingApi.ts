@@ -1,7 +1,7 @@
 import { useUIStore } from "@/store/useUIStore";
 import { tradingToken, useAccountStore } from '@/store/useAccountStore';
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { normalizeInstruments, type TradeRequest } from "@/lib/contracts";
+import { decimalString, engineOrder, normalizeInstruments, normalizeOrderlist, type TradeRequest } from "@/lib/contracts";
 import {
   OrderlistResponseDTO,
   OrderHistoryResponseDTO,
@@ -111,6 +111,7 @@ export const tradingApi = createApi({
     // Orders
     getOpenOrders: builder.query<OrderlistResponseDTO, void>({
       query: () => "/v1/users/order/orders",
+      transformResponse: normalizeOrderlist,
       providesTags: ["Orders"],
     }),
     getOrderHistory: builder.query<OrderHistoryResponseDTO, void>({
@@ -123,7 +124,7 @@ export const tradingApi = createApi({
       query: ({ order, idempotencyKey }: { order: TradeRequest; idempotencyKey: string }) => ({
         url: "/v1/users/order/place-order",
         method: "POST",
-        body: order,
+        body: engineOrder(order),
         headers: { "Idempotency-Key": idempotencyKey },
       }),
       invalidatesTags: ["Orders", "Account"],
@@ -142,16 +143,20 @@ export const tradingApi = createApi({
       }) => ({
         url: `/v1/users/order/modify/${orderId}`,
         method: "PUT",
-        body: params,
+        body: {
+          cancelOrder: params.cancelOrder,
+          ...(params.sl !== undefined && { sl: decimalString(params.sl) }),
+          ...(params.tp !== undefined && { tp: decimalString(params.tp) }),
+        },
         headers: { "Idempotency-Key": idempotencyKey },
       }),
       invalidatesTags: ["Orders"],
     }),
     exitOrder: builder.mutation({
-      query: ({ idempotencyKey, ...params }: { orderId: string | number; exitLotSize: number; idempotencyKey: string }) => ({
+      query: ({ idempotencyKey, orderId, exitLotSize }: { orderId: string | number; exitLotSize: number; idempotencyKey: string }) => ({
         url: "/v1/users/order/exit-order",
         method: "POST",
-        body: params,
+        body: { orderId: Number(orderId), exitLotSize: exitLotSize.toFixed(2) },
         headers: { "Idempotency-Key": idempotencyKey },
       }),
       invalidatesTags: ["Orders", "Account", "OrderHistory"],

@@ -161,8 +161,6 @@
 .order-panel .quote-side {padding:12px; border-radius:12px}
 .order-panel .quote-side>span {font-size:12px}
 .order-panel .quote-side strong {font:500 21px/1.4 var(--mm-font-display); letter-spacing:-.035em; margin-top:3px}
-.order-panel .spread-line {margin:9px 0 20px; font-size:11px}
-.order-panel .spread-line small {font-size:10px}
 .order-panel .field-label {font-size:12px; margin-bottom:9px}
 .order-panel .volume-control {height:46px; border-radius:11px}
 .order-panel .volume-control input {height:42px; font-size:18px}

@@ -9,6 +9,10 @@ interface PriceState {
   // Applies a batch of ticks in one update, so a burst of socket messages causes one render.
   applyTicks: (ticks: RawTick[]) => void;
   getTick: (symbol: string) => PriceTick | undefined;
+  // Removes prices the feed says no longer exist (NO_PRICE / FEED_DOWN): blank, never stale.
+  clearPrices: (symbols: string[]) => void;
+  // Marks every held quote as current at `now` (an open feed is silent while nothing changes).
+  touch: (now: number) => void;
 }
 export const usePriceStore = create<PriceState>((set, get) => ({
   prices: {},
@@ -27,7 +31,6 @@ export const usePriceStore = create<PriceState>((set, get) => ({
           bid: t.bid,
           ask: t.ask,
           mid: t.mid,
-          spread: t.ask - t.bid,
           timestamp: t.receivedAt,
           sourceTs: t.sourceTs,
           lagMs: t.lagMs,
@@ -38,4 +41,17 @@ export const usePriceStore = create<PriceState>((set, get) => ({
     });
   },
   getTick: (symbol) => get().prices[symbol],
+  clearPrices: (symbols) =>
+    set((s) => {
+      if (!symbols.some((symbol) => symbol in s.prices)) return s;
+      const prices = { ...s.prices };
+      for (const symbol of symbols) delete prices[symbol];
+      return { prices };
+    }),
+  touch: (now) =>
+    set((s) => {
+      const prices: Record<string, PriceTick> = {};
+      for (const [symbol, tick] of Object.entries(s.prices)) prices[symbol] = { ...tick, timestamp: now };
+      return { prices, lastReceivedAt: now };
+    }),
 }));

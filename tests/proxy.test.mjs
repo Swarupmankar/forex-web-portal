@@ -34,7 +34,7 @@ const PLACE = "v1/users/order/place-order";
 const EXIT = "v1/users/order/exit-order";
 const MODIFY = "v1/users/order/modify/42";
 const HANDOFF = "v1/users/trading/web-session/redeem";
-const market = { symbol: "EURUSD", orderType: "BUY", executionType: "MARKET", lotSize: 0.1 };
+const market = { symbol: "EURUSD", orderType: "BUY", executionType: "MARKET", lotSize: "0.1" };
 const place = (body) => validateBody(PLACE, "POST", body);
 const rejects = (result, pattern) => {
   assert.equal(result.ok, false);
@@ -88,11 +88,11 @@ test("path traversal and odd segments are rejected", () => {
 
 test("place-order accepts valid market, limit and stop orders", () => {
   assert.deepEqual(place(market), { ok: true, body: market });
-  assert.equal(place({ ...market, sl: 1.05, tp: 1.2 }).ok, true);
-  assert.equal(place({ ...market, lotSize: 0.29 }).ok, true);
-  assert.equal(place({ ...market, lotSize: 100 }).ok, true);
-  assert.equal(place({ ...market, executionType: "LIMIT", limitPrice: 1.08 }).ok, true);
-  assert.equal(place({ ...market, orderType: "SELL", executionType: "STOP", limitPrice: 1.07 }).ok, true);
+  assert.equal(place({ ...market, sl: "1.05", tp: "1.2" }).ok, true);
+  assert.equal(place({ ...market, lotSize: "0.29" }).ok, true);
+  assert.equal(place({ ...market, lotSize: "100" }).ok, true);
+  assert.equal(place({ ...market, executionType: "LIMIT", limitPrice: "1.08" }).ok, true);
+  assert.equal(place({ ...market, orderType: "SELL", executionType: "STOP", limitPrice: "1.07" }).ok, true);
   assert.equal(place({ ...market, symbol: "XAU_USD.X" }).ok, true);
 });
 
@@ -107,12 +107,12 @@ test("place-order rejects missing, mistyped and unknown fields", () => {
   rejects(place({ ...market, symbol: "EUR/USD" }), /instrument/);
   rejects(place({ ...market, orderType: "buy" }), /BUY or SELL/);
   rejects(place({ ...market, executionType: "STOP_LIMIT" }), /MARKET, LIMIT or STOP/);
-  rejects(place({ ...market, lotSize: "0.1" }), /Volume/);
-  rejects(place({ ...market, lotSize: 0 }), /Volume/);
-  rejects(place({ ...market, lotSize: -1 }), /Volume/);
-  rejects(place({ ...market, lotSize: Infinity }), /Volume/);
-  rejects(place({ ...market, sl: 0 }), /Stop loss/);
-  rejects(place({ ...market, tp: "1.2" }), /Take profit/);
+  rejects(place({ ...market, lotSize: 0.1 }), /Volume/);
+  rejects(place({ ...market, lotSize: "0" }), /Volume/);
+  rejects(place({ ...market, lotSize: "-1" }), /Volume/);
+  rejects(place({ ...market, lotSize: "Infinity" }), /Volume/);
+  rejects(place({ ...market, sl: "0" }), /Stop loss/);
+  rejects(place({ ...market, tp: 1.2 }), /Take profit/);
   rejects(place({ ...market, sl: null }), /Stop loss/);
   rejects(place({ ...market, comment: "hi" }), /Unexpected field: comment/);
   rejects(place(JSON.parse('{"symbol":"EURUSD","orderType":"BUY","executionType":"MARKET","lotSize":0.1,"__proto__":{}}')), /Unexpected field/);
@@ -122,47 +122,47 @@ test("place-order rejects missing, mistyped and unknown fields", () => {
 });
 
 test("place-order enforces lot size decimals and the maximum", () => {
-  rejects(place({ ...market, lotSize: 0.015 }), /steps of 0.01/);
-  rejects(place({ ...market, lotSize: 0.001 }), /steps of 0.01/);
-  rejects(place({ ...market, lotSize: 1e-300 }), /steps of 0.01/);
-  rejects(place({ ...market, lotSize: 100.01 }), /100 lots/);
-  assert.equal(validateBody(PLACE, "POST", { ...market, lotSize: 5 }, 2).ok, false);
-  assert.equal(validateBody(PLACE, "POST", { ...market, lotSize: 2 }, 2).ok, true);
+  rejects(place({ ...market, lotSize: "0.015" }), /steps of 0.01/);
+  rejects(place({ ...market, lotSize: "0.001" }), /steps of 0.01/);
+  rejects(place({ ...market, lotSize: "1e-300" }), /steps of 0.01/);
+  rejects(place({ ...market, lotSize: "100.01" }), /100 lots/);
+  assert.equal(validateBody(PLACE, "POST", { ...market, lotSize: "5" }, 2).ok, false);
+  assert.equal(validateBody(PLACE, "POST", { ...market, lotSize: "2" }, 2).ok, true);
 });
 
 test("place-order ties limitPrice to the execution type", () => {
-  rejects(place({ ...market, limitPrice: 1.1 }), /Market orders cannot include/);
+  rejects(place({ ...market, limitPrice: "1.1" }), /Market orders cannot include/);
   rejects(place({ ...market, limitPrice: null }), /Market orders cannot include/);
   rejects(place({ ...market, executionType: "LIMIT" }), /entry price/);
-  rejects(place({ ...market, executionType: "STOP", limitPrice: 0 }), /entry price/);
-  rejects(place({ ...market, executionType: "LIMIT", limitPrice: "1.1" }), /entry price/);
+  rejects(place({ ...market, executionType: "STOP", limitPrice: "0" }), /entry price/);
+  rejects(place({ ...market, executionType: "LIMIT", limitPrice: 1.1 }), /entry price/);
 });
 
 test("exit-order schema", () => {
   const exit = (body) => validateBody(EXIT, "POST", body);
-  assert.equal(exit({ orderId: 12, exitLotSize: 0.5 }).ok, true);
-  assert.equal(exit({ orderId: "12", exitLotSize: 0.07 }).ok, true);
-  rejects(exit({ exitLotSize: 0.5 }), /order ID/);
-  rejects(exit({ orderId: 0, exitLotSize: 0.5 }), /order ID/);
-  rejects(exit({ orderId: 1.5, exitLotSize: 0.5 }), /order ID/);
-  rejects(exit({ orderId: "12a", exitLotSize: 0.5 }), /order ID/);
-  rejects(exit({ orderId: "000", exitLotSize: 0.5 }), /order ID/);
+  assert.equal(exit({ orderId: 12, exitLotSize: "0.5" }).ok, true);
+  assert.equal(exit({ orderId: "12", exitLotSize: "0.07" }).ok, true);
+  rejects(exit({ exitLotSize: "0.5" }), /order ID/);
+  rejects(exit({ orderId: 0, exitLotSize: "0.5" }), /order ID/);
+  rejects(exit({ orderId: 1.5, exitLotSize: "0.5" }), /order ID/);
+  rejects(exit({ orderId: "12a", exitLotSize: "0.5" }), /order ID/);
+  rejects(exit({ orderId: "000", exitLotSize: "0.5" }), /order ID/);
   rejects(exit({ orderId: 12 }), /Close volume/);
-  rejects(exit({ orderId: 12, exitLotSize: 0.123 }), /Close volume/);
-  rejects(exit({ orderId: 12, exitLotSize: "1" }), /Close volume/);
-  rejects(exit({ orderId: 12, exitLotSize: 1, all: true }), /Unexpected field: all/);
+  rejects(exit({ orderId: 12, exitLotSize: "0.123" }), /Close volume/);
+  rejects(exit({ orderId: 12, exitLotSize: 1 }), /Close volume/);
+  rejects(exit({ orderId: 12, exitLotSize: "1", all: true }), /Unexpected field: all/);
 });
 
 test("modify schema: cancelOrder required, 0 removes a level", () => {
   const modify = (body) => validateBody(MODIFY, "PUT", body);
   assert.equal(modify({ cancelOrder: true }).ok, true);
-  assert.equal(modify({ cancelOrder: false, sl: 0, tp: 0 }).ok, true);
-  assert.equal(modify({ cancelOrder: false, sl: 1.05, tp: 1.2 }).ok, true);
+  assert.equal(modify({ cancelOrder: false, sl: "0", tp: "0" }).ok, true);
+  assert.equal(modify({ cancelOrder: false, sl: "1.05", tp: "1.2" }).ok, true);
   rejects(modify({}), /cancelOrder/);
   rejects(modify({ cancelOrder: "true" }), /cancelOrder/);
-  rejects(modify({ cancelOrder: false, sl: -1 }), /Stop loss/);
-  rejects(modify({ cancelOrder: false, tp: NaN }), /Take profit/);
-  rejects(modify({ cancelOrder: false, tp: "1.2" }), /Take profit/);
+  rejects(modify({ cancelOrder: false, sl: "-1" }), /Stop loss/);
+  rejects(modify({ cancelOrder: false, tp: "1e3" }), /Take profit/);
+  rejects(modify({ cancelOrder: false, tp: 1.2 }), /Take profit/);
   rejects(modify({ cancelOrder: false, orderId: 42 }), /Unexpected field: orderId/);
 });
 
@@ -211,18 +211,18 @@ test("tradingMode forces halted in production on the development feed or without
     DEPLOY_ENV: "production",
     TRADING_MODE: "enabled",
     BACKEND_URL: "https://api.example.com",
-    NEXT_PUBLIC_WS_URL: "https://feed.example.com",
+    NEXT_PUBLIC_PRICEFEED_URL: "https://feed.example.com",
   };
   assert.equal(tradingMode(live), "enabled");
-  assert.equal(tradingMode({ ...live, NEXT_PUBLIC_WS_URL: "https://mock-ws-chart.onrender.com" }), "halted");
+  assert.equal(tradingMode({ ...live, NEXT_PUBLIC_PRICEFEED_URL: "https://mock-ws-chart.onrender.com" }), "halted");
   assert.equal(tradingMode({ ...live, BACKEND_URL: undefined }), "halted");
   assert.equal(tradingMode({ ...live, BACKEND_URL: "http://api.example.com" }), "halted");
   assert.equal(tradingMode({ ...live, BACKEND_URL: "not a url" }), "halted");
-  assert.equal(tradingMode({ ...live, TRADING_MODE: "close-only", NEXT_PUBLIC_WS_URL: "https://mock-ws.x" }), "halted");
+  assert.equal(tradingMode({ ...live, TRADING_MODE: "close-only", NEXT_PUBLIC_PRICEFEED_URL: "https://mock-ws.x" }), "halted");
   // An unrecognised DEPLOY_ENV is treated as production.
-  assert.equal(tradingMode({ ...live, DEPLOY_ENV: "prod", NEXT_PUBLIC_WS_URL: "https://mock-ws.x" }), "halted");
+  assert.equal(tradingMode({ ...live, DEPLOY_ENV: "prod", NEXT_PUBLIC_PRICEFEED_URL: "https://mock-ws.x" }), "halted");
   // Staging and development may use the development feed.
-  assert.equal(tradingMode({ ...live, DEPLOY_ENV: "staging", NEXT_PUBLIC_WS_URL: "https://mock-ws.x" }), "enabled");
+  assert.equal(tradingMode({ ...live, DEPLOY_ENV: "staging", NEXT_PUBLIC_PRICEFEED_URL: "https://mock-ws.x" }), "enabled");
   assert.equal(tradingMode({ ...live, DEPLOY_ENV: undefined, BACKEND_URL: undefined }), "enabled");
 });
 

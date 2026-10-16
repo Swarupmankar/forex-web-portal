@@ -10,7 +10,7 @@ const {newPracticeAccount,placePractice,managePractice,settlePractice,practiceMe
 const now=100000;
 const quotes=(bid=1.1,ask=1.1002)=>({EURUSD:{symbol:'EURUSD',bid,ask,timestamp:now}});
 const buy={symbol:'EURUSD',orderType:'BUY',executionType:'MARKET',lotSize:0.1};
-test('market fills at ask/bid, close realizes spread and cannot execute twice',()=>{
+test('market fills at ask/bid, close realizes the bid/ask gap and cannot execute twice',()=>{
  const a=placePractice(newPracticeAccount(),buy,quotes(),now);
  assert.equal(a.orders[0].openPrice,1.1002);
  assert.equal(practiceMetrics(a,quotes()).equity,9998);

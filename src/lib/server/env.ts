@@ -13,6 +13,8 @@ import {
 export interface ServerConfig {
   /** Backend origin, or null when it must not be used (see `problem`). */
   backend: URL | null;
+  /** Trading-engine base (origin + routing path, no trailing slash) for order calls, or null. */
+  engine: string | null;
   problem: string | null;
   deployEnv: DeployEnv;
   version: string;
@@ -43,31 +45,42 @@ export function parseServerEnv(env: EnvLike): ServerConfig {
     warnings.push(`Unknown DEPLOY_ENV "${env.DEPLOY_ENV}"; treating it as production.`);
   if (!declared && env.NODE_ENV === "production")
     warnings.push("DEPLOY_ENV is not set; defaulting to development. Set DEPLOY_ENV=production on live deployments.");
+  const allowed = list(env.BACKEND_ALLOWED_HOSTS);
+  // Returns the parsed URL, or the reason it must not be used.
+  const check = (name: string, raw: string | undefined): URL | string => {
+    if (!raw?.trim()) return `${name} is not set.`;
+    let url: URL;
+    try {
+      url = new URL(raw.trim());
+    } catch {
+      return `${name} is not a valid URL.`;
+    }
+    if (url.username || url.password) return `${name} must not contain credentials.`;
+    const httpAllowed = deploy === "development" && url.protocol === "http:";
+    if (url.protocol !== "https:" && !httpAllowed)
+      return `${name} must use https when DEPLOY_ENV is ${deploy}.`;
+    if (allowed.length && !allowed.includes(url.hostname.toLowerCase()))
+      return `${name} host ${url.hostname} is not listed in BACKEND_ALLOWED_HOSTS.`;
+    return url;
+  };
+  // The engine base keeps its routing path (/broker/<broker>/<server>): the load balancer matches on it.
+  let engineUrl = check("NEXT_PUBLIC_ENGINE_URL", env.NEXT_PUBLIC_ENGINE_URL);
+  if (typeof engineUrl !== "string" && (engineUrl.search || engineUrl.hash))
+    engineUrl = "NEXT_PUBLIC_ENGINE_URL must not contain a query or fragment.";
+  if (typeof engineUrl === "string") warnings.push(`${engineUrl} Orders cannot be sent.`);
+  const engine =
+    typeof engineUrl === "string" ? null : (engineUrl.origin + engineUrl.pathname).replace(/\/+$/, "");
   const config = (backend: URL | null, problem: string | null): ServerConfig => ({
     backend,
+    engine,
     problem,
     deployEnv: deploy,
     version,
     warnings,
   });
 
-  const raw = env.BACKEND_URL?.trim();
-  if (!raw) return config(null, "BACKEND_URL is not set.");
-  let url: URL;
-  try {
-    url = new URL(raw);
-  } catch {
-    return config(null, "BACKEND_URL is not a valid URL.");
-  }
-  if (url.username || url.password)
-    return config(null, "BACKEND_URL must not contain credentials.");
-  const httpAllowed = deploy === "development" && url.protocol === "http:";
-  if (url.protocol !== "https:" && !httpAllowed)
-    return config(null, `BACKEND_URL must use https when DEPLOY_ENV is ${deploy}.`);
-  const allowed = list(env.BACKEND_ALLOWED_HOSTS);
-  if (allowed.length && !allowed.includes(url.hostname.toLowerCase()))
-    return config(null, `BACKEND_URL host ${url.hostname} is not listed in BACKEND_ALLOWED_HOSTS.`);
-  return config(new URL(url.origin), null);
+  const backend = check("BACKEND_URL", env.BACKEND_URL);
+  return typeof backend === "string" ? config(null, backend) : config(new URL(backend.origin), null);
 }
 
 export function logEvent(level: "info" | "warn" | "error", event: string, message: string) {
@@ -91,9 +104,10 @@ export function serverEnv(): ServerConfig {
 export function policyEnv(): EnvLike {
   return {
     ...process.env,
-    // NEXT_PUBLIC_* is inlined at build time; the literal reference gives this code
-    // the same feed URL the browser bundle was built with.
-    NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL,
+    // NEXT_PUBLIC_* is inlined at build time; the literal references give this code
+    // the same feed and engine URLs the browser bundle was built with.
+    NEXT_PUBLIC_PRICEFEED_URL: process.env.NEXT_PUBLIC_PRICEFEED_URL,
+    NEXT_PUBLIC_ENGINE_URL: process.env.NEXT_PUBLIC_ENGINE_URL,
   };
 }
 

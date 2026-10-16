@@ -6,6 +6,7 @@ import { usePracticeStore } from '@/store/usePracticeStore';
 import { usePriceStore } from '@/store/usePriceStore';
 import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { stopPriceSocket } from '@/services/priceSocket';
+import { mobileSocketService } from '@/services/mobileSocket';
 import { useOrderFlow } from '@/store/useOrderFlow';
 import { resetServerClock } from '@/lib/serverClock';
 
@@ -14,6 +15,7 @@ export function clearTradingWorkspace() {
   store.dispatch(tradingApi.util.getRunningQueriesThunk()).forEach(q => q.abort());
   store.dispatch(tradingApi.util.resetApiState());
   stopPriceSocket();
+  mobileSocketService.stop();
   usePriceStore.setState({ prices: {}, lastReceivedAt: 0, connection: 'disconnected' });
   resetServerClock();
   // An unconfirmed order belongs to the previous account; stop verifying it here.

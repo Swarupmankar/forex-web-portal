@@ -47,7 +47,7 @@ export function OrderEntry() {
   const oneClick = useOneClick();
   const stocks = useGetAllStocksQuery(undefined, { skip: practice || !u.isAuthenticated });
   const metadata = practice ? undefined : stocks.data?.find((i) => i.symbol === symbol);
-  // The same quote the submit path validates against, including any account spread markup.
+  // The same quote the submit path validates against: the live bid and ask.
   const quote = useExecutableQuote(symbol);
   const limits = spec(symbol);
   const min = limits.min, step = limits.step;
@@ -194,13 +194,6 @@ export function OrderEntry() {
               </strong>
             </button>
           ))}
-        </div>
-        <div className="spread-line">
-          <span>Spread</span>
-          <span>
-            {quote ? formatPrice(quote.ask - quote.bid, symbol) : "—"}{" "}
-            <small>price units</small>
-          </span>
         </div>
         <label className="field-label" htmlFor="lot-volume">
           Volume <span>Lots</span>

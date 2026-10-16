@@ -14,7 +14,7 @@ export function classifyFailure(error: unknown): "unknown" | "rejected" {
     // Without an explicit outcome, a server-side fault may have happened after the order was sent.
     return e.status === 500 || e.status === 502 || e.status === 504 ? "unknown" : "rejected";
 }
-type ServerOrder = { id: string | number; symbol?: string; orderType?: string; lotSize?: string | number; volume?: number; createdAt?: string };
+type ServerOrder = { id: string | number; symbol?: string; orderType?: string; lotSize?: string | number; lotSizeStore?: string | number; volume?: number; createdAt?: string };
 // Finds an order that appeared after an unconfirmed submit and matches what was sent.
 export function findSubmittedOrder(request: TradeRequest, knownIds: string[], orders: ServerOrder[], startedAt: number) {
     const known = new Set(knownIds);
@@ -23,7 +23,8 @@ export function findSubmittedOrder(request: TradeRequest, knownIds: string[], or
             return false;
         if (!String(o.orderType ?? "").toUpperCase().startsWith(request.orderType))
             return false;
-        const lots = Number(o.lotSize ?? o.volume);
+        // lotSizeStore is what was requested; lotSize is "0" until an A-book order fills.
+        const lots = Number(o.lotSizeStore ?? o.lotSize ?? o.volume);
         if (Number.isFinite(lots) && Math.abs(lots - request.lotSize) > 1e-6)
             return false;
         const created = o.createdAt ? Date.parse(o.createdAt) : NaN;

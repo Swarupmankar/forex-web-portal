@@ -48,5 +48,5 @@ test("deploy env, version and configuration warnings", () => {
   assert.equal(typo.deployEnv, "production");
   assert.match(typo.warnings[0], /Unknown DEPLOY_ENV/);
   assert.match(parseServerEnv({ NODE_ENV: "production" }).warnings[0], /DEPLOY_ENV is not set/);
-  assert.deepEqual(parseServerEnv({ DEPLOY_ENV: "staging", NODE_ENV: "production" }).warnings, []);
+  assert.deepEqual(parseServerEnv({ DEPLOY_ENV: "staging", NODE_ENV: "production", NEXT_PUBLIC_ENGINE_URL: "https://engine.example.com/b/1" }).warnings, []);
 });
