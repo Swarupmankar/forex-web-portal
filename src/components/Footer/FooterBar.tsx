@@ -4,48 +4,10 @@ import { usePriceStore } from "@/store/usePriceStore";
 import { DEVELOPMENT_FEED, PREVIEW_FEED } from "@/lib/market";
 import { QUOTE_STALE_MS } from "@/lib/freshness";
 import { usePracticeStore } from "@/store/usePracticeStore";
-import { useAccountStore } from '@/store/useAccountStore';
-export function FooterBar({
-  balance,
-  equity,
-  margin,
-  freeMargin,
-  marginLevel,
-}: {
-  balance?: number;
-  equity?: number;
-  margin?: number;
-  freeMargin?: number;
-  marginLevel?: number | null;
-}) {
-  const practice=usePracticeStore(s=>s.mode === "practice");
-  const currency = useAccountStore(s => s.accounts.find(a => a.id === s.activeId)?.currency);
-  return (
-    <footer className="terminal-footer">
-      <div className="account-metrics">
-        {[
-          ["Balance", balance],
-          ["Equity", equity],
-          ["Used margin", margin],
-          ["Free margin", freeMargin],
-          ["Margin level", marginLevel],
-        ].map(([label, value]) => (
-          <div key={String(label)}>
-            <span>{label}</span>
-            <strong>
-              {typeof value === "number"
-                ? value.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  }) + (label === "Margin level" ? "%" : practice ? " USD" : currency ? ` ${currency}` : '')
-                : "—"}
-            </strong>
-          </div>
-        ))}
-      </div>
-      <FeedStatus />
-    </footer>
-  );
+export function FooterBar() {
+  return <footer className="terminal-footer desktop-footer">
+    <span>Movement Markets · Web terminal</span><FeedStatus />
+  </footer>;
 }
 
 function FeedStatus() {

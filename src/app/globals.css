@@ -2,5 +2,9 @@
 @import "../styles/fonts.css";
 @import "../styles/tokens.css";
 @import "../styles/terminal-base.css";
-@import "../styles/workspace.css";
 @import "../styles/chart-execution.css";
+@import "../styles/workspace.css";
+
+@import "../styles/desktop-terminal.css";
+@import "../styles/terminal-polish.css";
+@import "../styles/movement-brand.css";

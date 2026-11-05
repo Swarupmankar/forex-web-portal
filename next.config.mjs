@@ -5,7 +5,7 @@ const buildId = process.env.GIT_COMMIT_SHA || process.env.VERCEL_GIT_COMMIT_SHA;
 // may poll over http(s) and upgrade to ws(s), so both schemes are allowed per origin.
 function feedOrigins() {
   const { NEXT_PUBLIC_WS_URL, NEXT_PUBLIC_PRICEFEED_URL, NEXT_PUBLIC_ENGINE_URL } = process.env;
-  return [NEXT_PUBLIC_WS_URL, NEXT_PUBLIC_PRICEFEED_URL, NEXT_PUBLIC_ENGINE_URL].flatMap((value) => {
+  return [NEXT_PUBLIC_WS_URL, NEXT_PUBLIC_PRICEFEED_URL, NEXT_PUBLIC_ENGINE_URL, ...(process.env.TRADING_SERVICE_ALLOWED_ORIGINS || "").split(",").map(s => s.trim())].flatMap((value) => {
     try {
       const { protocol, host } = new URL(value ?? "");
       const secure = protocol === "https:" || protocol === "wss:";

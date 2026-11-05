@@ -1,8 +1,10 @@
 import { create } from "zustand";
 import { PriceTick } from "@/types/trading";
+import { rememberPriceDigits } from '@/lib/pricePrecision';
 export type RawTick = { symbol: string; bid: number; ask: number; mid?: number; sourceTs?: number; lagMs?: number; receivedAt: number };
 interface PriceState {
   prices: Record<string, PriceTick>;
+  digits: Record<string, number>;
   connection: "connecting" | "connected" | "disconnected";
   lastReceivedAt: number;
   setConnection: (v: PriceState["connection"]) => void;
@@ -16,6 +18,7 @@ interface PriceState {
 }
 export const usePriceStore = create<PriceState>((set, get) => ({
   prices: {},
+  digits: {},
   connection: "disconnected",
   lastReceivedAt: 0,
   setConnection: (connection) => set({ connection }),
@@ -37,7 +40,7 @@ export const usePriceStore = create<PriceState>((set, get) => ({
           direction: t.bid > previous ? "up" : t.bid < previous ? "down" : "same",
         };
       }
-      return { prices, lastReceivedAt: Math.max(...valid.map((t) => t.receivedAt)) };
+      return { prices, digits: rememberPriceDigits(s.digits, valid), lastReceivedAt: Math.max(...valid.map((t) => t.receivedAt)) };
     });
   },
   getTick: (symbol) => get().prices[symbol],

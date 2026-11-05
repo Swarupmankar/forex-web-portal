@@ -72,7 +72,7 @@ let starting: Promise<void> | undefined;
 
 /**
  * Decides what this tab shows on load: the account chosen in the client portal, the
- * account this tab already had open (a reload), or a redirect to the portal's login.
+ * account this tab already had open (a reload), or the account-entry screen linking to the client portal.
  */
 export function startTerminalSession() {
   starting ??= (async () => {
@@ -100,7 +100,7 @@ export function startTerminalSession() {
       switchTradingAccount('practice');
       useUIStore.getState().grantAccess();
     }
-    else goToPortalSignIn();
+    else useUIStore.getState().welcome();
   })();
   return starting;
 }

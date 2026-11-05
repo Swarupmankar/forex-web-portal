@@ -7,13 +7,15 @@ import { pricefeed } from "./pricefeed/pricefeed.pb";
 import { usePriceStore, type RawTick } from "@/store/usePriceStore";
 import { tradingToken } from "@/store/useAccountStore";
 import { PREVIEW_FEED } from "@/lib/market";
+import { parseFeedTime } from "@/lib/serverClock";
+import { useSessionServices } from "@/store/useSessionServices";
 import { fromScaled } from "@/lib/contracts";
 
 // sint64 only decodes exactly with a Long implementation wired in.
 protobuf.util.Long = Long as any;
 protobuf.configure();
 
-const FEED_URL = process.env.NEXT_PUBLIC_PRICEFEED_URL?.trim().replace(/\/+$/, "") ?? "";
+
 const MAX_SYMBOLS = 256;
 const State = pricefeed.SymbolStatus.State;
 
@@ -58,8 +60,8 @@ function handle(message: pricefeed.ServerMessage) {
   for (const q of message.quotes) {
     if (!q.symbol) continue;
     // ts is when the gateway received the book, not when it was sent, and the current book is
-    // re-sent on every subscribe: it is not a measure of lag, so the arrival time is used.
-    const tick: RawTick = { symbol: q.symbol, bid: fromScaled(String(q.bid)), ask: fromScaled(String(q.ask)), receivedAt };
+    // re-sent on every subscribe: arrival time measures availability, while ts locates its candle.
+    const tick: RawTick = { symbol: q.symbol, bid: fromScaled(String(q.bid)), ask: fromScaled(String(q.ask)), sourceTs: parseFeedTime(String(q.ts), receivedAt), receivedAt };
     rawListeners.forEach((listener) => listener(tick));
     pending.set(q.symbol, tick);
     scheduleFlush();
@@ -87,12 +89,14 @@ function handle(message: pricefeed.ServerMessage) {
 
 function open() {
   const token = tradingToken();
+  const FEED_URL = useSessionServices.getState().binding?.pricefeedBase;
   if (!token || !FEED_URL || socket) return;
   usePriceStore.getState().setConnection("connecting");
   const ws = new WebSocket(`${FEED_URL.replace(/^http/i, "ws")}/ws/prices?token=${encodeURIComponent(token)}`);
   ws.binaryType = "arraybuffer";
   socket = ws;
   ws.onopen = () => {
+    if (socket !== ws) return;
     attempt = 0;
     feedDown = false;
     usePriceStore.getState().setConnection("connected");

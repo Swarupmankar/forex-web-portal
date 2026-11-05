@@ -18,7 +18,12 @@ export function normalizeCandles(response: unknown): Candle[] {
       [];
   if (!Array.isArray(rows)) return [];
   const byTime = new Map<number, Candle>();
-  for (const row of rows) {
+  for (const source of rows) {
+    if (!source || typeof source !== "object") continue;
+    // Price-feed tuples are milliseconds and unscaled bid/ask OHLC.
+    const row = Array.isArray(source)
+      ? { time: Number(source[0]) / 1000, open: source[1], high: source[2], low: source[3], close: source[4] }
+      : source;
     let raw = row.time ?? row.timestamp ?? row.date ?? row.t;
     if (typeof raw === "string" && /^\d{4}-\d{2}-\d{2}-\d{2}:\d{2}$/.test(raw))
       raw = raw.slice(0, 10) + "T" + raw.slice(11) + ":00Z";
@@ -95,7 +100,7 @@ export function movingAverage(candles: Candle[], period = 20) {
   );
 }
 // Most bars the live chart keeps; the oldest drop off as new bars open.
-export const MAX_BARS = 3000;
+export const MAX_BARS = 20000;
 // The chart greys out its countdown and bid/ask lines when the quote is older than this.
 export const CHART_STALE_MS = 10000;
 
@@ -135,11 +140,12 @@ export function applyTick(
   time: number,
   seconds: number,
   cap = MAX_BARS,
+  start?: (time: number) => number,
 ): number | undefined {
   if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(time) || !(seconds > 0))
     return undefined;
   const bars = live.bars;
-  const bucket = bucketStart(time, seconds);
+  const bucket = start ? start(time) : bucketStart(time, seconds);
   const last = bars[bars.length - 1];
   if (!last || bucket > last.time) {
     bars.push({ time: bucket, open: price, high: price, low: price, close: price });
@@ -147,7 +153,8 @@ export function applyTick(
     live.newest = Math.max(live.newest, time);
     return bucket;
   }
-  if (last.time - time >= seconds) return undefined;
+  // Account-feed timestamps are authoritative: never put an earlier FX candle into the current one.
+  if ((start && bucket < last.time) || last.time - time >= seconds) return undefined;
   const newest = time >= live.newest;
   bars[bars.length - 1] = {
     time: last.time,

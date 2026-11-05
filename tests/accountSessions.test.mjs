@@ -119,3 +119,13 @@ test('client-portal hand-off connects every account and selects the chosen one',
   assert.equal(restored.accounts.find(a => a.username === 'R-1').balance, 1500.25, 'balance survives a reload');
   assert.throws(() => handoffSessions({ activeAccountId: 99, sessions: [entry(11, 'R-1', 'REAL', 't', '1')] }), /selected trading account/);
 });
+
+test('engine account identity survives reload independently of the visible login',()=>{
+ const s=loginSession({token:'test',account:{id:42,tradingUsername:'987654321',accountType:'REAL'}},identity);
+ assert.equal(s.account.tradingAccountId,42);
+ const vault=new AccountSessionVault(); vault.add(s);
+ const restored=new AccountSessionVault(); restored.restore(vault.serialize());
+ assert.equal(restored.accounts[0].tradingAccountId,42);
+ assert.equal(restored.accounts[0].username,'987654321');
+ assert.equal(accountDetails({},s.account).tradingAccountId,42);
+});

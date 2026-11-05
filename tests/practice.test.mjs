@@ -40,6 +40,32 @@ test('invalid volume, levels, quote age, symbol and excessive margin cannot alte
  assert.throws(()=>placePractice(a,buy,quotes(),now+20000));
  assert.equal(a.balance,10000);assert.equal(a.orders.length,0);
 });
+test('practice market orders reject protection inside the spread, like the connected engine',()=>{
+ const a=newPracticeAccount();
+ assert.throws(()=>placePractice(a,{...buy,sl:1.1001},quotes(),now),/below/);
+ assert.throws(()=>placePractice(a,{...buy,orderType:'SELL',sl:1.1001},quotes(),now),/above/);
+ assert.equal(a.orders.length,0);
+});
+for(const [side,type,entry,triggerBid,triggerAsk] of [
+ ['BUY','LIMIT',1.09,1.0898,1.09],
+ ['BUY','STOP',1.12,1.1198,1.12],
+ ['SELL','LIMIT',1.12,1.12,1.1202],
+ ['SELL','STOP',1.09,1.09,1.0902],
+]) test(`${side} ${type} triggers on the correct quote and closes without leftover exposure`,()=>{
+ let a=placePractice(newPracticeAccount(),{...buy,orderType:side,executionType:type,limitPrice:entry},quotes(),now);
+ assert.equal(a.orders[0].status,'PENDING');
+ a=settlePractice(a,quotes(),now);
+ assert.equal(a.orders[0].status,'PENDING');
+ const trigger=quotes(triggerBid,triggerAsk);
+ a=settlePractice(a,trigger,now);
+ assert.equal(a.orders[0].status,'OPEN');
+ assert.equal(a.orders[0].openPrice,entry);
+ a=managePractice(a,'P1','close',trigger,{},now);
+ assert.equal(a.orders[0].exitPrice,side==='BUY'?triggerBid:triggerAsk);
+ assert.equal(a.orders[0].pnl,-2);
+ assert.equal(a.balance,9998);
+ assert.equal(practiceMetrics(a,trigger).margin,0);
+});
 test('USDJPY P&L is converted to USD; edits and stop loss obey direction',()=>{
  const q={USDJPY:{symbol:'USDJPY',bid:150,ask:150.02,timestamp:now}};
  let a=placePractice(newPracticeAccount(),{...buy,symbol:'USDJPY'},q,now);
@@ -69,13 +95,17 @@ test('chart SL/TP edits preserve the opposite level and reject invalid drops',as
  assert.equal(a.orders[0].tp,undefined);assert.equal(a.orders[0].sl,1.09);
  assert.throws(()=>movePracticeLevel(a,'P1','entry',1.0,quotes(),now));
 });
-test('pending chart entry can move only while pending and must retain valid type and exit levels',async()=>{
+test('pending chart entry moves attached exits together and retains its type',async()=>{
  const {movePracticeLevel,pendingAtPrice}=await import(uri(engine));
  assert.equal(pendingAtPrice('BUY',1,1.1),'LIMIT');assert.equal(pendingAtPrice('BUY',1.2,1.1),'STOP');assert.equal(pendingAtPrice('SELL',1.2,1.1),'LIMIT');assert.equal(pendingAtPrice('SELL',1,1.1),'STOP');
  let a=placePractice(newPracticeAccount(),{...buy,executionType:'LIMIT',limitPrice:1.09,sl:1.07,tp:1.15},quotes(),now);
  a=movePracticeLevel(a,'P1','entry',1.08,quotes(),now);assert.equal(a.orders[0].openPrice,1.08);assert.equal(a.orders[0].limitPrice,1.08);
+ assert.equal(a.orders[0].sl,1.06);assert.equal(a.orders[0].tp,1.14);
  assert.throws(()=>movePracticeLevel(a,'P1','entry',1.2,quotes(),now));
- assert.throws(()=>movePracticeLevel(a,'P1','entry',1.06,quotes(),now));
+ const lower=movePracticeLevel(a,'P1','entry',1.06,quotes(),now);
+ assert.equal(lower.orders[0].sl,1.04);assert.equal(lower.orders[0].tp,1.12);
+ assert.throws(()=>movePracticeLevel(a,'P1','entry',0.01,quotes(),now),/Stop loss/);
+ for(const invalid of [NaN,undefined,0,-1]) assert.throws(()=>movePracticeLevel(a,'P1','entry',invalid,quotes(),now));
  a=settlePractice(a,quotes(1.0798,1.08),now);assert.equal(a.orders[0].status,'OPEN');
  assert.throws(()=>movePracticeLevel(a,'P1','entry',1.09,quotes(),now));
 });
@@ -134,4 +164,18 @@ test('balance is floored at zero and history is capped without touching open ord
  const t=trimHistory(many,2);
  assert.deepEqual(t.orders.map(o=>o.id),['O','C0','C1','Pd']);
  assert.equal(trimHistory(t,2),t);
+});
+
+test('history and retention follow exit time, including final exits of old positions',async()=>{
+ const {closePracticeVolume,practiceHistory,trimHistory}=await import(uri(engine));
+ let a=placePractice(newPracticeAccount(),{...buy,lotSize:0.02},quotes(),now);
+ a=closePracticeVolume(a,'P1',0.01,quotes(),now+1000);
+ a=placePractice(a,buy,quotes(),now+2000);
+ a=managePractice(a,'P3','close',quotes(),{},now+3000);
+ a=managePractice(a,'P1','close',quotes(),{},now+4000);
+ const before=JSON.stringify(a);
+ assert.deepEqual(practiceHistory(a.orders).map(o=>o.id),['P1','P3','P2']);
+ assert.equal(JSON.stringify(a),before);
+ assert.deepEqual(practiceHistory(trimHistory(a,2).orders).map(o=>o.id),['P1','P3']);
+ assert.equal(Math.round(practiceHistory(a.orders).reduce((sum,o)=>sum+o.pnl,0)*100),Math.round((a.balance-10000)*100));
 });

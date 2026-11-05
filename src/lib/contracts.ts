@@ -20,6 +20,15 @@ export interface TradeRequest {
   sl?: number;
   tp?: number;
 }
+/** Move a pending entry and its attached exits together, as on the mobile chart. */
+export function shiftPendingEntry(entry: number, next: number, levels: { sl?: number; tp?: number }, digits = 8) {
+  const shift = (level: number) => Number((level + next - entry).toFixed(digits));
+  return {
+    limitPrice: next,
+    ...(levels.sl !== undefined && { sl: shift(levels.sl) }),
+    ...(levels.tp !== undefined && { tp: shift(levels.tp) }),
+  };
+}
 // The trading engine takes every amount as a decimal string ("0.10", "1.10005") and rejects
 // JSON numbers. Rounding to 8 places (the feed's 1e8 scale) drops float noise such as
 // 0.1 + 0.2 = 0.30000000000000004 before the value becomes text.
@@ -44,7 +53,8 @@ export function engineOrder(order: TradeRequest) {
   };
 }
 // Under A-book a placed order is SENDING (lotSize "0", no entry price) until the venue fills it.
-// It must never show as a position, so unfilled rows found among open orders move to pending.
+// Keep unfilled rows out of valuation/chart positions. The activity UI separately
+// labels market requests as "Awaiting fill" alongside positions, not as resting orders.
 export function normalizeOrderlist(list: OrderlistResponseDTO): OrderlistResponseDTO {
   const unfilled = (o: Order) => ["SENDING", "PENDING"].includes(String(o.orderStatus ?? "").toUpperCase());
   const open = list?.openOrders ?? [];
@@ -67,7 +77,7 @@ export function normalizeInstruments(response: unknown): SymbolItem[] {
       const group = String(
         i.category ?? i.currencyGroup ?? i.currency_group ?? "",
       ).toLowerCase();
-      const category = group.includes("metal")
+      const category = group.includes("energ") || group.includes("oil") || group.includes("gas") ? "Energies" : group.includes("metal")
         ? "Metals"
         : group.includes("crypto")
           ? "Crypto"
@@ -87,6 +97,9 @@ export function normalizeInstruments(response: unknown): SymbolItem[] {
           i.name ??
           `${i.currencyBase ?? i.currency_base ?? i.symbol} / ${i.currencyQuote ?? i.currency_quote ?? "USD"}`,
         category,
+        baseCurrency: i.baseCurrency ?? i.currencyBase ?? i.currency_base,
+        quoteCurrency: i.quoteCurrency ?? i.currencyQuote ?? i.currency_quote,
+        digits: i.digits !== undefined && i.digits !== null && i.digits !== '' && Number.isInteger(Number(i.digits)) && Number(i.digits) >= 0 && Number(i.digits) <= 8 ? Number(i.digits) : undefined,
         pipSize: Number(i.pipSize ?? i.pip_size) || undefined,
         contractSize: Number(i.contractSize ?? i.contract_size) || undefined,
         minLots: Number(i.minLots ?? i.min_lot ?? i.minLot) || undefined,
@@ -97,10 +110,14 @@ export function normalizeInstruments(response: unknown): SymbolItem[] {
 }
 export function validateTrade(
   order: TradeRequest,
-  referencePrice?: number,
+  reference?: number | { bid: number; ask: number },
 ): string | null {
   if (!order.symbol || !Number.isFinite(order.lotSize) || order.lotSize <= 0)
     return "Enter a volume greater than zero.";
+  const buy = order.orderType === "BUY";
+  const referencePrice = typeof reference === "number" ? reference : reference && (buy ? reference.ask : reference.bid);
+  // Protection triggers on the liquidation side; a BUY closes at bid, SELL at ask.
+  const protectionPrice = typeof reference === "number" ? reference : reference && (buy ? reference.bid : reference.ask);
   const entry =
     order.executionType === "MARKET" ? referencePrice : order.limitPrice;
   if (!entry || !Number.isFinite(entry) || entry <= 0)
@@ -113,12 +130,13 @@ export function validateTrade(
     if (n !== undefined && (!Number.isFinite(n) || n <= 0))
       return `${label} must be greater than zero.`;
   }
-  const buy = order.orderType === "BUY";
+  const protection = order.executionType === "MARKET" ? protectionPrice : entry;
+  if (!protection || !Number.isFinite(protection) || protection <= 0) return "A current quote is required.";
   // Market orders are checked against the live price, so say so rather than "entry".
   const ref = order.executionType === "MARKET" ? "current price" : "entry price";
-  if (order.sl !== undefined && (buy ? order.sl >= entry : order.sl <= entry))
+  if (order.sl !== undefined && (buy ? order.sl >= protection : order.sl <= protection))
     return `Stop loss must be ${buy ? "below" : "above"} the ${ref}.`;
-  if (order.tp !== undefined && (buy ? order.tp <= entry : order.tp >= entry))
+  if (order.tp !== undefined && (buy ? order.tp <= protection : order.tp >= protection))
     return `Take profit must be ${buy ? "above" : "below"} the ${ref}.`;
   if (referencePrice && order.executionType !== "MARKET") {
     const above = entry > referencePrice;

@@ -1,77 +1,102 @@
-/* Terminal workspace. One responsive rule set replaces the successive layout experiments.
-   Colours, wordmark and typefaces match the client and partner portals. */
-.terminal-header {
-  height:72px; flex-shrink:0; display:flex; align-items:center; gap:24px;
-  padding:0 24px; background:var(--mm-surface); border-bottom:1px solid var(--mm-hairline);
-}
-.brand-link {flex-shrink:0}
-.terminal-brand {display:flex; align-items:center; gap:11px; white-space:nowrap}
-.terminal-brand>svg {width:24px; height:auto; aspect-ratio:456/495}
-.terminal-wordmark {font:300 15.5px/1 'Movement Wordmark',sans-serif; letter-spacing:-.005em}
+/* Trading terminal v2: one workspace layout for desktop, tablet and mobile. */
+.terminal-v2 {height:100dvh; min-height:0; display:flex; flex-direction:column; overflow:hidden; font-family:var(--mm-font-body)}
+.terminal-header {height:64px; min-height:64px; padding:0 20px; display:flex; align-items:center; gap:24px; border-bottom:1px solid var(--mm-hairline); background:var(--mm-surface); flex-shrink:0}
+.terminal-brand {display:flex; align-items:center; gap:11px; white-space:nowrap; color:var(--mm-ink)}
+.terminal-brand>svg {width:24px; height:auto; aspect-ratio:456/495; flex:none}
+.terminal-wordmark {display:block; font:300 15.5px/1.15 'Movement Wordmark',sans-serif; letter-spacing:-.005em}
 .terminal-wordmark b {font-weight:700}
-.terminal-brand-sub {display:block; font-size:10px; font-weight:400; line-height:1.4; letter-spacing:.02em; color:var(--mm-ink-2); margin-top:6px}
-.header-divider {width:1px; height:32px; background:var(--mm-hairline)}
-.terminal-search {display:flex; align-items:center; gap:10px; width:240px; min-height:40px; padding:0 12px; border:1px solid var(--mm-hairline); border-radius:12px; background:var(--mm-surface-2); color:var(--mm-ink-2); font-size:12px; text-align:left}
-.terminal-search kbd {margin-left:auto; background:var(--mm-surface)}
-.header-actions {display:flex; align-items:center; gap:8px; margin-left:auto}
-.terminal-header .icon-button {width:40px; height:40px; border-radius:12px}
-.terminal-header .icon-button svg {width:20px; height:20px}
-.terminal-header .header-deposit {min-height:40px; padding:8px 18px}
-.account-selector {display:flex; align-items:center; gap:12px; min-height:48px; padding:5px 14px; margin-left:8px; border:1px solid var(--mm-hairline); border-radius:14px; text-align:left; background:var(--mm-surface)}
-.account-selector:hover {background:var(--mm-surface-2)}
-.account-selector-text {display:flex; flex-direction:column; min-width:112px}
-.account-selector-text strong {font:600 16px/1.4 var(--mm-font-display); font-variant-numeric:tabular-nums}
+.terminal-brand-sub {display:block; font-size:10px; margin-top:2px; color:var(--mm-ink-2)}
+.header-divider {display:none}
+.terminal-search {display:flex; align-items:center; gap:9px; width:240px; height:36px; padding:0 12px; border:1px solid var(--mm-hairline); border-radius:7px; color:var(--mm-ink-2); background:var(--mm-surface-2); font-size:12px}
+.terminal-search svg {width:16px}.terminal-search kbd {margin-left:auto}
+.header-actions {display:flex; align-items:center; gap:6px; margin-left:auto}
+.terminal-header .icon-button {width:36px; height:36px; border-radius:7px}
+.terminal-header .header-deposit {min-height:36px; border-radius:7px; padding:7px 14px}
+.account-selector {display:flex; align-items:center; gap:10px; padding:6px 12px; border:1px solid var(--mm-hairline); border-radius:8px; text-align:left; margin-left:8px; min-height:44px; background:var(--mm-surface)}
+.account-selector-text {display:flex; flex-direction:column; min-width:110px}
+.account-selector-text strong {font:600 16px/1.25 var(--mm-font-display); font-variant-numeric:tabular-nums}
 .account-selector-text small {font-size:11px; color:var(--mm-ink-2); max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.account-selector>svg {width:16px; color:var(--mm-ink-2)}
-
-.terminal-workspace {flex:1; min-height:0; display:grid; grid-template-columns:264px minmax(0,1fr) 320px; grid-template-rows:minmax(0,1fr) 184px; gap:16px; padding:16px 20px}
-.panel {border:1px solid var(--mm-hairline); background:var(--mm-surface); border-radius:20px; overflow:hidden; min-width:0; min-height:0; box-shadow:var(--mm-shadow)}
-.markets-panel {display:flex; flex-direction:column; grid-column:1; grid-row:1 / 3}
-.chart-panel {display:flex; flex-direction:column; grid-column:2; grid-row:1; background:var(--chart-bg); container-type:inline-size; container-name:chart}
-.order-panel {display:flex; flex-direction:column; grid-column:3; grid-row:1 / 3}
-.activity-panel {display:flex; flex-direction:column; grid-column:2; grid-row:2; height:auto; min-height:0}
-.panel-heading {display:flex; align-items:center; justify-content:space-between; gap:12px; padding:20px 18px 16px; flex-shrink:0}
-.panel-heading h2 {font:600 20px/1.25 var(--mm-font-display); letter-spacing:-.03em; display:flex; align-items:center; gap:8px; margin:0}
-.panel-heading .count {font:500 11px var(--mm-font-body); border-radius:6px; min-width:22px; height:22px}
-.panel-heading .icon-button {width:34px; height:34px; border:1px solid var(--mm-hairline); border-radius:10px}
-.panel-heading .eyebrow {display:none}
-.terminal-app.activity-collapsed:not(.chart-focused) .terminal-workspace {grid-template-rows:minmax(0,1fr) 52px}
-.terminal-app.activity-collapsed:not(.chart-focused) .activity-content {display:none}
-.terminal-app.chart-focused .terminal-workspace {grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr)}
-.terminal-app.chart-focused .chart-panel {grid-column:1; grid-row:1}
-.terminal-app.chart-focused :is(.markets-panel,.order-panel,.activity-panel) {display:none}
-
-/* Watchlist: the instrument identity and quote form two stable columns. */
-.market-search-wrap {display:flex; align-items:center; gap:8px; margin:0 16px; padding:0 10px; border:1px solid var(--mm-hairline); border-radius:10px; background:var(--mm-surface-2)}
-.market-search-wrap svg {width:16px; color:var(--mm-ink-2)}
-.market-search-wrap input {height:38px; padding:8px 0; font-size:12px; border:0; background:transparent}
-.market-search-wrap kbd {font-size:10px}
-.market-filters {display:flex; align-items:center; gap:3px; overflow-x:auto; scrollbar-width:none; padding:12px 16px; flex-shrink:0}
-.market-filters button {flex-shrink:0; padding:6px 9px; min-height:30px; border-radius:999px; font-size:11px; font-weight:500; color:var(--mm-ink-2)}
-.market-filters button:hover {background:var(--mm-surface-2)}
-.market-filters button[aria-pressed='true'] {background:var(--accent-wash); color:var(--accent-ink)}
-.market-filters button svg {width:14px; height:14px; vertical-align:middle}
-.market-columns {display:flex; justify-content:space-between; padding:0 18px 10px; color:var(--mm-ink-3); font-size:11px; flex-shrink:0}
-.market-columns span:last-child {margin-right:21px}
-.market-list {flex:1; min-height:0; overflow:auto; padding:0 8px 8px; overscroll-behavior:contain}
-.market-row {position:relative; display:flex; align-items:center; min-height:66px; border:1px solid transparent; border-radius:12px; margin:2px 0; padding-right:4px}
-.market-row:hover {background:var(--mm-surface-2)}
-.market-row.selected {background:var(--accent-wash); border-color:transparent}
-.market-row.selected::before {content:''; position:absolute; left:0; top:18px; bottom:18px; width:3px; border-radius:0 3px 3px 0; background:var(--mm-accent)}
-.market-select {display:flex; align-items:center; gap:10px; flex:1; min-width:0; text-align:left; padding:12px 7px; min-height:64px}
-.market-name {min-width:0; flex:1}
-.market-name strong {font-size:12px; letter-spacing:-.01em}
-.market-name small {display:block; font-size:10.5px; color:var(--mm-ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:3px}
-.market-price {text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums}
-.market-price strong {font-size:12px; font-weight:600}
-.market-price small {display:block; font-size:10.5px; margin-top:3px; min-height:15px}
-.row-action {display:grid; place-items:center; width:24px; height:36px; flex-shrink:0; color:var(--mm-ink-3); border-radius:7px}
-.row-action svg {width:13px; height:13px}
-.row-action:hover {color:var(--mm-ink); background:var(--mm-surface)}
-.row-action.is-favorite {color:var(--accent-ink)}
-.markets-bottom {padding:12px 16px; border-top:1px solid var(--mm-hairline); font-size:11px; color:var(--mm-ink-2); flex-shrink:0}
-.markets-bottom .preview-label {margin:0; padding:0; border:0; font-size:10.5px}
-.markets-bottom>p {font:500 16px/1.5 var(--mm-font-display); margin:8px 0}
+.account-selector>svg {width:15px}
+.terminal-body {display:flex; flex:1; min-height:0; overflow:hidden}
+.workspace-nav {width:76px; padding:12px 7px; flex-shrink:0; display:flex; flex-direction:column; gap:8px; border-right:1px solid var(--mm-hairline); background:var(--mm-surface)}
+.workspace-nav button,.workspace-nav a {display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; min-height:58px; gap:6px; border-radius:8px; color:var(--mm-ink-2); font-size:10px; font-weight:500}
+.workspace-nav svg {width:20px;height:20px}.workspace-nav [aria-current='page'] {background:var(--accent-wash);color:var(--accent-ink)}
+.workspace-nav button:hover,.workspace-nav a:hover {background:var(--mm-surface-2)}
+.workspace-nav-bottom {margin-top:auto; display:flex; flex-direction:column; gap:5px}
+.desk-main {flex:1; min-width:0; min-height:0; display:flex; flex-direction:column}
+.desk-toolbar {min-height:48px; padding:6px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-shrink:0}
+.desk-title {display:flex; align-items:center; gap:10px; min-width:0}.desk-title h1 {font:600 15px/1.3 var(--mm-font-display); white-space:nowrap}
+.desk-title>span {font-size:11px;color:var(--mm-ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.desk-tools {display:flex; align-items:center; gap:5px}.desk-tools .icon-button {height:32px;width:32px;border-radius:6px}
+.desk-tool {display:flex; align-items:center; gap:6px; min-height:32px; padding:4px 9px; border:1px solid var(--mm-hairline); border-radius:6px; font-size:11px; color:var(--mm-ink-2)}
+.desk-tool svg {width:15px;height:15px}.desk-tool[aria-pressed='true'] {background:var(--mm-surface);color:var(--mm-ink)}
+.desk-environment {padding:3px 7px; border:1px solid var(--mm-hairline); border-radius:4px; font-size:10px; color:var(--mm-ink-2); margin-right:8px}
+.terminal-v2 .terminal-workspace {--market-width:270px;--ticket-width:300px; display:grid; flex:1; min-height:0; grid-template-columns:var(--market-width) minmax(0,1fr) var(--ticket-width); grid-template-rows:minmax(210px,1fr) 8px clamp(160px,var(--activity-height),calc(100% - 218px)); gap:0 10px; padding:0 12px 12px; overflow:hidden}
+.terminal-v2 .panel {border:1px solid var(--mm-hairline);border-radius:10px;background:var(--mm-surface);box-shadow:none;min-width:0;min-height:0;overflow:hidden}
+.terminal-v2 .markets-panel {display:flex;flex-direction:column;grid-column:1;grid-row:1}
+.terminal-v2 .chart-panel {display:flex;flex-direction:column;grid-column:2;grid-row:1; background:var(--chart-bg);container-type:inline-size;container-name:chart}
+.terminal-v2 .order-panel {display:flex;flex-direction:column;grid-column:3;grid-row:1}
+.terminal-v2 .activity-panel {display:flex;flex-direction:column;grid-column:1/-1;grid-row:3; height:auto;min-height:0}
+.activity-divider {grid-column:1/-1;grid-row:2;display:grid;place-items:center;cursor:row-resize;touch-action:none}
+.activity-divider>span {width:46px;height:3px;border-radius:3px;background:var(--mm-line-strong)}
+.activity-divider:hover>span,.activity-divider:focus-visible>span {background:var(--mm-accent)}
+.terminal-v2.markets-hidden .terminal-workspace {--market-width:0px;column-gap:0;grid-template-columns:0 minmax(0,1fr) var(--ticket-width)}
+.terminal-v2.markets-hidden .markets-panel {display:none}
+.terminal-v2.ticket-hidden .terminal-workspace {--ticket-width:0px;grid-template-columns:var(--market-width) minmax(0,1fr) 0;column-gap:0}
+.terminal-v2.ticket-hidden .order-panel {display:none}
+.terminal-v2.markets-hidden:not(.ticket-hidden) .order-panel {margin-left:10px}
+.terminal-v2.ticket-hidden:not(.markets-hidden) .chart-panel {margin-left:10px}
+.terminal-v2.activity-collapsed .terminal-workspace {grid-template-rows:minmax(230px,1fr) 8px 48px}
+.terminal-v2.activity-collapsed .activity-body,.terminal-v2.activity-collapsed .activity-query-bar,.terminal-v2.activity-collapsed .activity-summary {display:none}
+.terminal-v2.activity-collapsed .activity-divider {visibility:hidden}
+.terminal-v2.activity-maximized .terminal-workspace,.terminal-v2.chart-focused .terminal-workspace {grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+.terminal-v2.activity-maximized :is(.markets-panel,.chart-panel,.order-panel,.activity-divider),.terminal-v2.chart-focused :is(.markets-panel,.order-panel,.activity-panel,.activity-divider) {display:none}
+.terminal-v2.activity-maximized .activity-panel,.terminal-v2.chart-focused .chart-panel {display:flex;grid-column:1;grid-row:1;margin:0}
+.panel-heading {display:flex;align-items:center;justify-content:space-between;gap:8px;padding:16px;flex-shrink:0}
+.panel-heading h2 {display:flex;align-items:center;gap:8px;font:600 16px/1.3 var(--mm-font-display);letter-spacing:-.02em;margin:0}
+.panel-heading .icon-button {width:32px;height:32px;border-radius:6px}.panel-heading .count {font:500 10px var(--mm-font-body);min-width:20px;height:20px;border-radius:4px}
+.market-search-wrap {display:flex;align-items:center;gap:8px;margin:0 12px;padding:0 9px;border:1px solid var(--mm-hairline);border-radius:6px;background:var(--mm-surface-2)}
+.market-search-wrap svg {width:16px;color:var(--mm-ink-2)}.market-search-wrap input {height:36px;padding:7px 0;border:0;background:transparent;font-size:12px}.market-search-wrap kbd {font-size:10px}
+.market-filters {display:flex;align-items:center;gap:4px;overflow:auto;padding:10px 12px;scrollbar-width:none;flex-shrink:0}
+.market-filters button {flex-shrink:0;min-height:30px;padding:4px 8px;border-radius:5px;color:var(--mm-ink-2);font-size:11px}
+.market-filters button[aria-pressed='true'] {background:var(--accent-wash);color:var(--accent-ink);font-weight:600}.market-filters svg {width:15px;height:15px}
+.market-columns {display:flex;justify-content:space-between;padding:5px 16px 8px;font-size:10px;color:var(--mm-ink-2);border-bottom:1px solid var(--mm-line-soft)}.market-columns span:last-child {margin-right:24px}
+.market-list {flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:4px 7px}
+.market-row {display:flex;align-items:center;position:relative;min-height:62px;border-radius:6px;margin:1px 0;padding-right:3px;border:1px solid transparent}
+.market-row.selected {background:var(--accent-wash);border-color:transparent}.market-row:hover {background:var(--mm-surface-2)}
+.market-select {display:flex;align-items:center;gap:8px;flex:1;min-width:0;text-align:left;padding:10px 6px;min-height:60px}
+.market-name {min-width:0;flex:1}.market-name strong {font-size:12px;letter-spacing:-.02em}.market-name small {display:block;font-size:10px;color:var(--mm-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+.market-price {text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.market-price strong {font-size:12px;font-weight:600}.market-price small {display:block;font-size:11px;margin-top:3px}
+.row-action {display:grid;place-items:center;width:28px;height:36px;flex-shrink:0;color:var(--mm-ink-3);border-radius:5px}.row-action svg {width:14px;height:14px}.row-action.is-favorite {color:var(--accent-ink)}.row-action:hover {background:var(--mm-surface);color:var(--mm-ink)}
+.markets-bottom {padding:10px 14px;border-top:1px solid var(--mm-hairline);font-size:10px;color:var(--mm-ink-2);flex-shrink:0}.markets-bottom .preview-label {border:0;padding:0;font-size:10px;margin:0}
+.ticket-mode {display:block;font-size:10px;color:var(--mm-ink-2);margin-bottom:4px}.ticket-instrument {display:flex;align-items:center;gap:6px;font-size:11px}
+.order-scroll {flex:1;min-height:0;overflow:auto;padding:0 16px 12px;overscroll-behavior:contain}
+.order-scroll .segmented {padding:3px;border-radius:7px}.order-scroll .segmented button {min-height:34px;padding:7px 4px;border-radius:5px;font-size:12px}
+.order-panel .price-choice {margin-top:14px;gap:8px}.order-panel .quote-side {padding:10px;border-radius:7px}.order-panel .quote-side>span {font-size:12px}.order-panel .quote-side strong {font:600 20px/1.4 var(--mm-font-display);letter-spacing:-.03em;margin-top:3px}
+.order-panel .field-label {font-size:12px;margin:16px 0 8px}.order-panel .volume-control {height:44px;border-radius:7px}.order-panel .volume-control input {height:42px;font-size:18px}.order-panel .volume-control button {height:42px;width:42px}
+.order-panel .volume-presets {gap:6px;margin-top:8px}.order-panel .volume-presets button {min-height:30px;border-radius:5px;font-size:11px}
+.order-panel .risk-heading {margin-top:18px;padding-top:14px;border-top:1px solid var(--mm-hairline)}.order-panel .risk-heading>span {font-size:12px}.order-panel .risk-helper {font-size:11px;line-height:1.6;margin-top:8px}
+.order-panel .risk-fields {gap:10px}.order-panel .risk-fields label,.order-panel .pending-fields label {font-size:12px}.order-panel .risk-fields input,.order-panel .pending-fields input {height:40px;font-size:12px;border-radius:6px}
+.order-panel .ticket-summary {display:block;margin:16px 0 4px;padding:12px;background:var(--mm-surface-2);border:0;border-radius:6px;font-size:11px}.ticket-summary div {display:flex;justify-content:space-between;gap:10px;margin:0 0 6px}.ticket-summary div:last-child {margin:0}
+.order-bottom {padding:12px 16px;border-top:1px solid var(--mm-hairline);background:var(--mm-surface);flex-shrink:0}.terminal-v2 .place-order {min-height:44px;border-radius:7px;font-size:13px;box-shadow:none}.place-order:hover:not(:disabled){transform:none}
+.ticket-disclaimer {font-size:10px;line-height:1.5;margin-top:8px;color:var(--mm-ink-2);text-align:center}.one-click-line {font-size:10px}.order-bottom .execution-notice {padding:8px;border-radius:6px;background:var(--mm-surface-2)}
+.activity-heading {display:flex;align-items:center;gap:8px;min-height:46px;padding:0 16px;border-bottom:1px solid var(--mm-hairline);flex-shrink:0}
+.activity-tabs {display:flex;align-self:stretch;gap:24px;min-width:0;overflow:auto;scrollbar-width:none}
+.activity-tabs button {display:flex;align-items:center;gap:6px;position:relative;padding:0 0 2px;white-space:nowrap;color:var(--mm-ink-2);font-size:12px}
+.activity-tabs button[aria-selected='true'] {color:var(--accent-ink);font-weight:600}.activity-tabs button[aria-selected='true']::after {content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--mm-accent)}.activity-tabs .count {font-size:10px;min-width:18px;height:18px;border-radius:4px}
+.activity-actions {display:flex;align-items:center;gap:4px;margin-left:auto}.activity-actions .icon-button {width:30px;height:32px}.activity-period {font-size:11px;max-width:108px}
+.activity-query-bar {display:flex;align-items:center;gap:10px;padding:7px 16px;border-bottom:1px solid var(--mm-line-soft);flex-shrink:0}
+.activity-search {display:flex;align-items:center;gap:6px;width:240px;border:1px solid var(--mm-hairline);border-radius:6px;padding:0 8px;background:var(--mm-surface-2)}.activity-search>svg {width:14px;height:14px;color:var(--mm-ink-2)}.activity-search input {height:30px;min-width:0;padding:5px 0;border:0;background:transparent;font-size:11px}.activity-search .icon-button {height:24px;width:24px;flex-shrink:0}
+.activity-query-bar>select {width:auto;height:32px;padding:4px 24px 4px 8px;font-size:11px;border-radius:6px}.activity-result-count {font-size:11px;color:var(--mm-ink-2);margin-left:auto}
+.activity-summary {display:flex;gap:32px;padding:22px 24px;border-bottom:1px solid var(--mm-hairline);flex-shrink:0}.activity-summary>div {min-width:130px}.activity-summary span {display:block;color:var(--mm-ink-2);font-size:12px}.activity-summary strong {display:block;font:500 25px/1.5 var(--mm-font-display);font-variant-numeric:tabular-nums}
+.activity-content {min-height:0;flex:1;overflow:auto}.activity-content .empty-state {min-height:100%;padding:20px}.activity-content .empty-state strong {font-size:14px}.activity-content .empty-state p {font-size:12px}
+.orders-table {width:100%;min-width:850px;border-collapse:separate;border-spacing:0}.orders-table th {position:sticky;top:0;z-index:2;background:var(--mm-surface-2);font-size:11px;padding:9px 16px;font-weight:500;letter-spacing:0;text-transform:none}
+.orders-table td {font-size:12px;padding:10px 16px}.orders-table td small {font-size:10px;margin-top:3px}.orders-table tfoot td {position:sticky;bottom:0;z-index:1;background:var(--mm-surface-2);border-top:1px solid var(--mm-hairline)}.orders-table .row-manage .icon-button {width:32px;height:32px}
+.order-receipt {display:flex;align-items:center;gap:12px;margin:0 12px 10px;padding:10px 14px;border:1px solid var(--mm-hairline);border-left:3px solid var(--mm-accent);border-radius:7px;background:var(--mm-surface);flex-shrink:0}.order-receipt>svg {width:21px;height:21px;color:var(--accent-ink);flex-shrink:0}.order-receipt.is-confirmed {border-left-color:var(--mm-pos)}.order-receipt.is-confirmed>svg {color:var(--mm-pos)}
+.order-receipt>div {flex:1;min-width:0}.order-receipt strong,.order-receipt span,.order-receipt small {display:block}.order-receipt strong {font-size:12px}.order-receipt span {font-size:12px;color:var(--mm-ink-2)}.order-receipt small {font-size:11px;color:var(--mm-ink-2)}.order-receipt .button {font-size:11px;min-height:32px;border-radius:6px;padding:4px 10px}
+.terminal-footer {display:flex;align-items:center;gap:14px;min-height:62px;padding:10px 20px;border-top:1px solid var(--mm-hairline);background:var(--mm-surface);flex-shrink:0}
+.account-metrics {display:flex;align-items:center;gap:0;min-width:0}.account-metrics>div {padding:0 24px;border-right:1px solid var(--mm-hairline);display:flex;flex-direction:column;gap:3px}.account-metrics>div:first-child {padding-left:0}.account-metrics>div:last-child{border:0}.account-metrics span{font-size:10px;color:var(--mm-ink-2)}.account-metrics strong {font:600 14px/1.4 var(--mm-font-body);font-variant-numeric:tabular-nums}
+.feed-status {display:flex;align-items:center;gap:7px;margin-left:auto;color:var(--mm-ink-2);font-size:10px}.feed-status time {margin-left:8px;font-variant-numeric:tabular-nums}.mobile-workspace-nav {display:none}
 
 /* The chart heading is the focal point, with restrained execution controls below. */
 .chart-overview {display:flex; flex-wrap:wrap; align-items:center; flex-shrink:0; background:var(--mm-surface)}
@@ -151,242 +176,61 @@
 .position-close:hover,.position-mobile-risk:hover,.position-mobile-fit:hover {background:var(--mm-surface-2)}
 .position-close svg,.position-mobile-fit svg {width:14px; height:14px}
 
-/* Order entry uses the portals' form and button language, without hover lifts. */
-.ticket-mode {display:block; margin-bottom:5px; font-size:11px; color:var(--mm-ink-2)}
-.ticket-instrument {display:flex; align-items:center; gap:7px; font-size:11px}
-.order-scroll {flex:1; min-height:0; overflow:auto; padding:0 20px 8px; overscroll-behavior:contain}
-.order-scroll .segmented {border-radius:12px; padding:4px}
-.order-scroll .segmented button {min-height:34px; padding:7px 3px; font-size:12px; border-radius:9px}
-.order-panel .price-choice {margin-top:16px; gap:10px}
-.order-panel .quote-side {padding:12px; border-radius:12px}
-.order-panel .quote-side>span {font-size:12px}
-.order-panel .quote-side strong {font:500 21px/1.4 var(--mm-font-display); letter-spacing:-.035em; margin-top:3px}
-.order-panel .field-label {font-size:12px; margin-bottom:9px}
-.order-panel .volume-control {height:46px; border-radius:11px}
-.order-panel .volume-control input {height:42px; font-size:18px}
-.order-panel .volume-control button {height:42px; width:42px}
-.order-panel .volume-presets {gap:6px; margin-top:8px}
-.order-panel .volume-presets button {min-height:32px; border-radius:8px; font-size:11px}
-.order-panel .risk-heading {margin-top:22px; padding-top:18px; border-top:1px solid var(--mm-hairline)}
-.order-panel .risk-heading>span {font-size:12px}
-.order-panel .risk-helper {font-size:11px; line-height:1.6; max-width:none; margin-top:8px}
-.order-panel .risk-fields {gap:10px}
-.order-panel .risk-fields label,.order-panel .pending-fields label {font-size:11px}
-.order-panel .risk-fields input,.order-panel .pending-fields input {height:40px; font-size:12px; border-radius:10px}
-.order-panel .ticket-summary {display:block; margin:20px 0 12px; padding:14px; background:var(--mm-surface-2); border:0; border-radius:12px; font-size:11px}
-.order-panel .ticket-summary div {margin:0 0 8px}
-.order-panel .ticket-summary div:last-child {margin-bottom:0}
-.order-bottom {padding:16px 20px; border-top:1px solid var(--mm-hairline); background:var(--mm-surface); flex-shrink:0}
-.order-panel .order-bottom .place-order {min-height:46px; border-radius:999px; font-size:13px; font-weight:600; box-shadow:none}
-.place-order:hover:not(:disabled) {transform:none}
-.ticket-disclaimer {font-size:10px; line-height:1.5; margin-top:10px; color:var(--mm-ink-3); text-align:center}
-.execution-notice strong {font-size:12px}
-.execution-notice small {font-size:11px}
-.order-bottom .execution-notice {padding:10px; background:var(--mm-surface-2); border-radius:10px}
-.one-click-line {font-size:11px}
 
-.activity-heading {display:flex; align-items:center; gap:8px; min-height:50px; padding:0 16px; border-bottom:1px solid var(--mm-hairline); flex-shrink:0}
-.activity-tabs {display:flex; align-self:stretch; gap:20px; min-width:0; overflow:auto; scrollbar-width:none}
-.activity-tabs button {display:flex; align-items:center; gap:6px; position:relative; padding:0 0 2px; white-space:nowrap; color:var(--mm-ink-2); font-size:12px}
-.activity-tabs button[aria-selected='true'] {color:var(--mm-ink); font-weight:600}
-.activity-tabs button[aria-selected='true']::after {content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:var(--mm-accent)}
-.activity-tabs .count {font-size:10px; min-width:18px; height:18px}
-.activity-actions {display:flex; align-items:center; gap:4px; margin-left:auto}
-.activity-actions .icon-button {width:30px; height:32px}
-.orders-table th {font-size:10.5px; padding:8px 12px; font-weight:500; letter-spacing:0; text-transform:none}
-.orders-table td {font-size:12px; padding:9px 12px}
-.orders-table td small {font-size:10px; margin-top:2px}
-.orders-table .row-manage .icon-button {width:28px; height:28px}
-.activity-content .empty-state {min-height:100%; padding:20px}
-.activity-content .empty-state strong {font-size:13px}
-.activity-content .empty-state p {font-size:12px}
+/* App artwork with equal-sized legs and a stable footprint across the terminal. */
+.instrument-art.app-artwork {background:none; border:0; border-radius:0; overflow:visible; width:var(--instrument-size); min-width:var(--instrument-size)}
+.instrument-art.app-artwork.asset-pair {width:calc(var(--instrument-size) * 1.65); min-width:calc(var(--instrument-size) * 1.65)}
+.app-artwork .asset-disc {position:relative; display:grid; place-items:center; width:var(--instrument-size); height:var(--instrument-size); flex:none; border-radius:50%; overflow:hidden; background:var(--mm-surface-2); color:var(--mm-ink-2); font-size:calc(var(--instrument-size) * .28); font-weight:600; box-shadow:0 0 0 1px var(--mm-hairline)}
+.app-artwork .asset-disc + .asset-disc {margin-left:calc(var(--instrument-size) * -.35); box-shadow:0 0 0 2px var(--mm-surface)}
+.app-artwork img {display:block; width:100%; height:100%; object-fit:contain}
+.app-artwork .asset-flag img {object-fit:cover}
+.app-artwork .asset-object {background:#f3f5f8}
+.app-artwork .asset-object img {width:88%; height:88%}
+.market-select .app-artwork {--instrument-size:24px}
+.market-select {gap:8px}
+.market-name strong {display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.market-price strong > span,.market-price small > span {font-size:9px; color:var(--mm-ink-3); font-weight:400}
+.market-price small {color:var(--mm-ink-2)}
+.watchlist-more {display:flex; justify-content:center; width:100%; min-height:40px; padding:10px}
+.activity-notice {display:flex; align-items:center; justify-content:center; gap:10px; padding:8px 12px; color:var(--mm-ink-2); background:var(--mm-surface-2); font-size:12px}
+.settlement-status {font-size:11px; color:var(--mm-ink-2); white-space:nowrap; margin-left:auto}
+.trade-detail-heading {display:flex; align-items:center; gap:12px; margin-bottom:20px}
+.trade-detail-grid {display:grid; grid-template-columns:1fr 1fr; gap:18px 24px}
+.trade-detail-grid dt {color:var(--mm-ink-2); font-size:12px; margin-bottom:5px}
+.trade-detail-grid dd {font-size:14px; font-variant-numeric:tabular-nums; overflow-wrap:anywhere}
+.trade-detail-note {font-size:12px; margin-top:20px; line-height:1.6}
 
-.terminal-footer {display:flex; align-items:center; gap:20px; min-height:62px; padding:10px 24px; flex-shrink:0; background:var(--mm-surface); border-top:1px solid var(--mm-hairline)}
-.account-metrics {display:flex; align-items:center; gap:0}
-.account-metrics>div {display:flex; flex-direction:column; gap:3px; padding:0 24px; border-left:1px solid var(--mm-hairline)}
-.account-metrics>div:first-child {padding-left:0; border-left:0}
-.account-metrics span {color:var(--mm-ink-2); font-size:10.5px}
-.account-metrics strong {font:600 13px/1.4 var(--mm-font-body); font-variant-numeric:tabular-nums}
-.feed-status {display:flex; align-items:center; gap:7px; margin-left:auto; color:var(--mm-ink-2); font-size:10.5px}
-.feed-status time {margin-left:10px; color:var(--mm-ink-3); font-variant-numeric:tabular-nums}
-.mobile-workspace-nav {display:none}
 
-@container chart (max-width:740px) {
-  .chart-overview .chart-dealing {width:276px}
-  .chart-overview .alert-shortcut {display:none}
-  .chart-overview .instrument-heading {padding-right:6px}
-  .chart-overview .chart-deal strong {font-size:12px}
-
-  .chart-trade-modes button:first-child span,.chart-trade-modes button:last-child span {display:none}
-  .chart-trade-modes button {min-width:30px}
-  .instrument-class {display:none}
-  .activity-filter span {display:none}
-}
-@container chart (max-width:580px) {
-  .chart-overview {display:block}
-  .chart-overview .instrument-quote {display:flex}
-  .chart-overview .chart-dealing {width:auto; padding:6px 10px; border-top:1px solid var(--mm-hairline); flex-wrap:nowrap}
-  .chart-overview .chart-trade-modes {flex-basis:auto; margin-left:auto}
-  .chart-overview .chart-trade-modes button {min-height:32px; padding:3px}
-
-  .instrument-heading {padding:12px 14px; min-height:70px}
-  .instrument-title h1 {font-size:20px}
-  .instrument-title p {font-size:11px}
-  .instrument-quote strong {font-size:21px}
-  .chart-toolbar {flex-wrap:wrap; gap:0; padding:4px 8px}
-  .timeframes {flex:1}
-  .timeframes button {min-width:30px}
-  .chart-capture {display:none}
-  .chart-indicators-button {font-size:10px; padding:0 4px}
-  .chart-controls .icon-button {width:28px}
-  .chart-readout {right:68px; padding:5px 8px}
-  .ohlc-readout {font-size:9px; gap:5px}
-  .active-studies {display:none}
-  .position-mobile-fit span,.position-close span {display:none}
-  .chart-trade-modes button {padding:4px; min-width:28px}
-}
-@media(min-width:1600px) {
-  .terminal-workspace {grid-template-columns:280px minmax(0,1fr) 344px; padding:20px 24px; gap:20px; grid-template-rows:minmax(0,1fr) 200px}
-  .market-name strong,.market-price strong {font-size:13px}
-  .panel-heading {padding:22px 20px 18px}
-}
-@media(min-width:1181px) and (max-width:1350px) {
-  .terminal-workspace {grid-template-columns:238px minmax(0,1fr) 300px; gap:12px; padding:14px}
-  .markets-panel {grid-row:1}
-  .activity-panel {grid-column:1 / 3}
-  .market-row {min-height:60px}
-  .market-select {min-height:58px; gap:7px}
-  .market-select .instrument-art {--instrument-size:30px}
-  .market-price strong {font-size:11px}
-  .terminal-search {width:200px}
-}
-@media(min-width:1181px) and (max-height:800px) {
-  .terminal-header {height:64px}
-  .terminal-workspace {padding-block:12px; grid-template-rows:minmax(0,1fr) 152px; gap:12px}
-  .terminal-footer {min-height:54px; padding-block:7px}
-  .instrument-heading {padding-block:10px; min-height:64px}
-  .instrument-title h1 {font-size:20px}
-  .instrument-quote strong {font-size:22px}
-  .chart-toolbar {min-height:40px; padding-block:2px}
-  .chart-dealing {padding-block:5px}
-  .rsi-pane {height:54px}
-  .panel-heading {padding-block:16px 12px}
-  .order-panel .risk-heading {margin-top:16px; padding-top:14px}
-  .order-panel .ticket-summary {margin-top:14px; padding:10px}
-}
+/* Chart controls contract inside the chart; they do not control page breakpoints. */
+@container chart (max-width:740px) {.chart-overview .chart-dealing {width:260px}.chart-overview .alert-shortcut {display:none}.chart-overview .instrument-heading {padding-right:6px}.chart-overview .instrument-class {display:none}.chart-overview .chart-deal strong{font-size:12px}}
+@container chart (max-width:540px) {.chart-overview .chart-dealing {width:100%;padding:6px 12px}.chart-overview .instrument-quote{display:flex}.chart-toolbar{flex-wrap:wrap}.timeframes{overflow:auto;max-width:100%}.position-close span,.position-mobile-fit span{display:none}}
+@media(min-width:1600px) {.terminal-v2 .terminal-workspace{--market-width:290px;--ticket-width:330px}}
+@media(min-width:1181px) and (max-height:850px) {.terminal-v2 .terminal-workspace{grid-template-rows:minmax(210px,1fr) 8px clamp(160px,var(--activity-height),calc(100% - 218px))}.terminal-v2.activity-collapsed .terminal-workspace{grid-template-rows:minmax(210px,1fr) 8px 48px}.terminal-v2.activity-maximized .terminal-workspace,.terminal-v2.chart-focused .terminal-workspace{grid-template-rows:minmax(0,1fr)}.panel-heading{padding-block:10px}.order-bottom{padding-block:10px}.instrument-heading{min-height:60px;padding-block:10px}.desk-toolbar{min-height:42px}.terminal-header{height:58px;min-height:58px}.chart-execution-hint{display:none}}
 @media(max-width:1180px) {
-  .terminal-header {height:66px; padding:0 20px; gap:16px}
-  .terminal-search,.header-divider {display:none}
-  .terminal-workspace {display:block; position:relative; padding:12px}
-  .markets-panel,.chart-panel,.order-panel,.activity-panel {display:none; height:100%}
-  .terminal-app[data-panel='markets'] .markets-panel,.terminal-app[data-panel='chart'] .chart-panel,.terminal-app[data-panel='trade'] .order-panel,.terminal-app[data-panel='activity'] .activity-panel {display:flex}
-  .terminal-app.activity-collapsed:not(.chart-focused) .activity-content {display:block}
-  .order-panel {max-width:640px; margin:auto}
-  .market-name strong,.market-price strong {font-size:14px}
-  .market-name small,.market-price small {font-size:12px}
-  .market-filters button {font-size:12px}
-  .market-columns span:last-child {margin-right:28px}
-  .row-action {width:36px; height:44px}
-  .mobile-workspace-nav {display:flex; align-items:center; flex-shrink:0; padding:6px 12px calc(6px + env(safe-area-inset-bottom)); background:var(--mm-surface); border-top:1px solid var(--mm-hairline)}
-  .mobile-workspace-nav button {display:flex; flex:1; align-items:center; justify-content:center; gap:8px; min-height:46px; border-radius:12px; color:var(--mm-ink-2); font-size:12px; font-weight:500}
-  .mobile-workspace-nav button[aria-current='page'] {color:var(--accent-ink); background:var(--accent-wash)}
-  .terminal-footer {min-height:56px; padding:8px 20px}
-  .account-metrics {flex:1; justify-content:space-between}
-  .account-metrics>div {padding:0 16px}
-  .feed-status {display:none}
-  .terminal-app.chart-focused .chart-panel {display:flex}
-  .chart-focused .terminal-header,.chart-focused .terminal-footer,.chart-focused .mobile-workspace-nav {display:none}
-  .chart-focused .terminal-workspace {padding:8px}
-  .chart-controls .icon-button,.timeframes button,.chart-indicators-button {height:36px; min-height:36px}
+ .workspace-nav{display:none}.terminal-header{height:60px;min-height:60px;padding:0 16px;gap:14px}.terminal-search{width:180px}.desk-tool,.desk-tools>.icon-button{display:none}.desk-toolbar{min-height:42px;padding:6px 14px}.desk-title h1{font-size:14px}.desk-title>span{display:none}
+ .terminal-v2 .terminal-workspace{display:block;position:relative;padding:0 12px 10px;overflow:hidden}.terminal-v2 .markets-panel,.terminal-v2 .chart-panel,.terminal-v2 .order-panel,.terminal-v2 .activity-panel{display:none;height:100%;margin:0}
+ .terminal-v2[data-panel='markets'] .markets-panel,.terminal-v2[data-panel='chart'] .chart-panel,.terminal-v2[data-panel='trade'] .order-panel,.terminal-v2[data-panel='activity'] .activity-panel{display:flex}
+ .terminal-v2 .activity-divider,.activity-maximize,.activity-expand{display:none}
+ .terminal-v2.activity-collapsed .activity-body{display:flex}.terminal-v2.activity-collapsed .activity-query-bar{display:flex}
+ .terminal-v2 .order-panel{max-width:600px;margin:auto}.terminal-v2 .market-select{min-height:70px}.market-name strong,.market-price strong{font-size:14px}.market-name small,.market-price small{font-size:12px}.row-action{width:40px;height:44px}
+ .mobile-workspace-nav{display:flex;align-items:center;flex-shrink:0;padding:5px 16px calc(5px + env(safe-area-inset-bottom));background:var(--mm-surface);border-top:1px solid var(--mm-hairline)}
+ .mobile-workspace-nav button{display:flex;flex:1;align-items:center;justify-content:center;gap:8px;min-height:46px;border-radius:7px;color:var(--mm-ink-2);font-size:12px}.mobile-workspace-nav button[aria-current='page']{background:var(--accent-wash);color:var(--accent-ink)}
+ .terminal-footer{padding:9px 16px;min-height:58px}.account-metrics{flex:1;justify-content:space-between;overflow:auto}.account-metrics>div{padding:0 14px;flex-shrink:0}.feed-status{display:none}.settlement-status{font-size:10px}
+ .terminal-v2.chart-focused .chart-panel{display:flex}.terminal-v2.chart-focused .desk-tools>.icon-button{display:flex}
+ .chart-navigation{opacity:1}.activity-summary{gap:24px;overflow:auto}.activity-summary>div{min-width:115px}
 }
-@media(max-width:620px) {
-  .chart-overview .chart-dealing {padding:6px 8px; flex-wrap:wrap}
-  .chart-overview .chart-trade-modes {flex-basis:100%; margin:0; justify-content:space-between}
-  .chart-overview .chart-trade-modes button {min-height:30px}
-
-  .terminal-header {height:64px; min-height:64px; padding:8px 12px; gap:8px; flex-wrap:nowrap}
-  .terminal-header .terminal-wordmark,.terminal-header .terminal-brand-sub {display:none}
-  .brand-link {margin-right:auto}
-  .terminal-header .header-actions {gap:2px}
-  .terminal-header .header-sound,.terminal-header .header-deposit {display:none}
-  .terminal-header .icon-button {width:36px; height:40px}
-  .account-selector {margin-left:4px; padding:5px 9px; min-height:44px; gap:8px; border-radius:12px}
-  .account-selector-text {min-width:0}
-  .account-selector-text strong {font-size:13px}
-  .account-selector-text small {font-size:10px; max-width:115px}
-  .terminal-workspace {padding:8px}
-  .panel {border-radius:16px}
-  .instrument-heading {padding:12px; min-height:68px; gap:8px}
-  .instrument-title {gap:8px}
-  .instrument-title h1 {font-size:19px}
-  .instrument-title p {font-size:10.5px}
-  .instrument-quote strong {font-size:20px}
-  .instrument-quote>span {font-size:10px}
-  .alert-shortcut {display:none}
-  .chart-toolbar {flex-wrap:wrap; justify-content:flex-start; padding:3px 8px}
-  .timeframes {width:100%; justify-content:space-between}
-  .timeframes button {flex:1; min-width:0}
-  .chart-controls {width:100%; justify-content:space-between}
-  .chart-controls .icon-button {width:36px}
-  .chart-indicators-button {flex:1; justify-content:center; font-size:11px}
-  .chart-capture {display:inline-flex}
-  .chart-dealing {padding:6px 8px; flex-wrap:wrap; gap:5px}
-  .chart-deal {flex:1; min-height:36px; padding:6px 8px}
-  .chart-deal strong {font-size:12px}
-  .chart-lots {width:56px}
-  .chart-lots input {height:36px}
-  .chart-trade-modes {flex-basis:100%; margin:0; justify-content:space-between}
-  .chart-trade-modes button {min-height:32px; flex:1; padding:4px; font-size:10px}
-  .chart-trade-modes button:first-child span,.chart-trade-modes button:last-child span {display:inline}
-  .interactive-chart-plot {min-height:120px}
-  .rsi-pane {height:48px}
-  .chart-readout {right:65px; padding:5px 7px}
-  .ohlc-readout {font-size:9px; gap:5px}
-  .ohlc-readout b {margin-right:2px}
-  .ohlc-readout>span:nth-child(2),.ohlc-readout>span:nth-child(3) {display:none}
-  .active-studies {display:none}
-  .position-dock {padding:5px 6px}
-  .position-dock-summary {gap:4px}
-  .position-direction {display:none}
-  .position-dock-summary select {font-size:10px; max-width:140px}
-  .position-live-pnl {font-size:12px}
-  .position-close,.position-mobile-risk,.position-mobile-fit {padding:4px; min-width:28px; font-size:10px; border:0}
-  .position-close span,.position-mobile-fit span {display:none}
-  .interactive-chart-caption {display:flex; justify-content:flex-end; min-height:22px; padding:3px 10px}
-  .interactive-chart-caption>span {display:none}
-  .terminal-footer {min-height:54px; padding:8px 16px}
-  .account-metrics>div {padding:0 10px}
-  .account-metrics>div:nth-child(3),.account-metrics>div:nth-child(5) {display:none}
-  .account-metrics>div:last-child {padding-right:0}
-  .account-metrics strong {font-size:11px}
-  .account-metrics span {font-size:10px}
-  .mobile-workspace-nav {padding:4px 8px calc(4px + env(safe-area-inset-bottom))}
-  .mobile-workspace-nav button {flex-direction:column; gap:3px; min-height:48px; font-size:10px}
-  .mobile-workspace-nav svg {width:18px; height:18px}
-  .activity-heading {min-height:50px; padding:0 12px; gap:3px}
-  .activity-tabs {gap:16px}
-  .activity-tabs button {font-size:11px}
-  .activity-actions .activity-filter {display:none}
-  .panel-heading {padding:18px 18px 14px}
-  .order-panel .panel-heading h2 {font-size:22px}
-  .order-panel .order-scroll {padding:0 18px 10px}
-  .order-bottom {padding:14px 18px}
-  .order-panel .risk-fields {flex-wrap:wrap}
-  .orders-table {min-width:0}
-  .orders-table td {padding:0; font-size:13px}
-  .orders-table .row-manage .icon-button {width:44px; height:44px}
+@media(max-width:700px) {
+ .terminal-header{padding:0 12px;gap:8px}.terminal-wordmark{font-size:11px}.terminal-brand>svg{width:19px;height:23px}.terminal-brand{gap:7px}.terminal-brand-sub{font-size:9px}.terminal-search,.header-sound,.header-deposit{display:none}.header-actions{gap:2px}.terminal-header .icon-button{width:32px}.account-selector{margin-left:3px;padding:4px 7px;gap:5px;min-height:40px}.account-selector-text{min-width:0}.account-selector-text strong{font-size:13px}.account-selector-text small{font-size:9px;max-width:100px}
+ .terminal-v2 .terminal-workspace{padding:0 8px 8px}.terminal-v2 .panel{border-radius:8px}.desk-toolbar{padding:5px 10px}.desk-environment{margin:0;font-size:9px}.instrument-heading{padding:10px 12px;min-height:62px}.instrument-title{gap:8px}.instrument-title h1{font-size:19px}.instrument-title p{font-size:11px}.instrument-quote strong{font-size:19px}.alert-shortcut{display:none}.chart-toolbar{padding:3px 7px;flex-wrap:wrap}.timeframes{width:100%;justify-content:space-between}.timeframes button{min-width:28px;height:34px}.chart-controls{width:100%;justify-content:space-between}.chart-controls .icon-button{width:36px}.chart-indicators-button{flex:1;justify-content:center}.chart-deal strong{font-size:13px}
+ .ohlc-readout{font-size:10px;gap:5px}.ohlc-readout b{margin-right:2px}.active-studies{display:none}.chart-readout{right:66px;padding:5px 7px}.rsi-pane{height:54px}.position-dock{padding:6px}.position-direction{display:none}.position-dock-summary select{max-width:145px;font-size:10px}.position-live-pnl{font-size:12px}.position-close,.position-mobile-risk,.position-mobile-fit{min-height:36px;padding:5px;font-size:10px}.interactive-chart-caption{font-size:9px;padding:4px 8px;gap:6px}.interactive-chart-caption>span{display:none}
+ .activity-heading{min-height:48px;padding:0 12px;flex-wrap:wrap;gap:0}.activity-tabs{min-height:46px;flex:1;gap:18px}.activity-actions{padding-bottom:5px}.activity-filter span{display:none}.activity-query-bar{padding:8px 12px;gap:7px;flex-wrap:wrap}.activity-search{width:100%;min-height:38px}.activity-search input{font-size:12px;height:36px}.activity-query-bar>select{height:36px}.activity-result-count{font-size:10px}.activity-summary{padding:14px;gap:20px}.activity-summary strong{font-size:21px}
+ .orders-table{min-width:0}.orders-table td{padding:0;font-size:13px}.orders-table .row-manage .icon-button{width:44px;height:44px}.orders-table tfoot td{position:static}.orders-table td small{font-size:11px}
+ .terminal-footer{padding:8px 12px;min-height:56px;flex-wrap:wrap;gap:4px}.account-metrics{flex-basis:100%}.account-metrics>div{padding:0 12px}.account-metrics strong{font-size:12px;white-space:nowrap}.account-metrics span{font-size:10px}.account-metrics>div:nth-child(3),.account-metrics>div:nth-child(5){display:flex}
+ .mobile-workspace-nav{padding:4px 8px calc(4px + env(safe-area-inset-bottom))}.mobile-workspace-nav button{flex-direction:column;gap:3px;min-height:48px;font-size:10px}.mobile-workspace-nav svg{width:19px;height:19px}
+ .order-receipt{margin:0 8px 8px;padding:8px;gap:8px;flex-wrap:wrap}.order-receipt>.button{margin-left:29px;order:3}.order-receipt>.icon-button{align-self:flex-start}.order-receipt>div{flex-basis:70%}
 }
-@media(max-width:1180px) and (max-height:600px) {
-  .terminal-workspace {overflow:auto}
-  .chart-panel {min-height:470px}
-  .chart-focused .chart-panel {min-height:360px}
-}
-@media(prefers-reduced-motion:reduce) {
-  .terminal-app *,.terminal-app *::before,.terminal-app *::after {scroll-behavior:auto; transition:none; animation:none}
-}
-
-.chart-message {inset:0; z-index:5}
-.chart-account-context {background:var(--mm-surface)}
+@media(max-height:620px) {.terminal-v2 .terminal-workspace{overflow:auto}.terminal-v2 .chart-panel{min-height:350px}.terminal-v2.activity-maximized .activity-panel{min-height:300px}}
+@media(prefers-reduced-motion:reduce){.terminal-v2 *,.terminal-v2 *::before,.terminal-v2 *::after{scroll-behavior:auto;transition:none;animation:none}}
 
 /* Session gate: shown until a client-portal session exists, and when one ends. */
 .session-gate { min-height: 100dvh; display: grid; place-items: center; padding: 16px; background: var(--mm-bg); color: var(--mm-ink); }
@@ -399,3 +243,31 @@
 .session-gate-accounts { width: 100%; display: flex; flex-direction: column; gap: 8px; margin-top: 6px; padding-top: 16px; border-top: 1px solid var(--mm-line-soft); }
 .session-gate-accounts h2 { margin: 0 0 2px; font-size: 12px; font-weight: 500; color: var(--mm-ink-3); }
 .session-gate .button svg { width: 16px; height: 16px; }
+.ticket-section-label {margin:14px 0 7px;font-size:12px;font-weight:500}.order-panel .price-choice {margin-top:0}.volume-limits{font-size:10px;color:var(--mm-ink-2);margin-top:6px}
+.order-review-heading{display:flex;align-items:center;gap:12px;margin-bottom:22px}.order-review-heading h3{font:600 22px var(--mm-font-display)}.order-review-heading>div>span{font-size:12px;color:var(--mm-ink-2)}.order-review-heading>strong{margin-left:auto;font-size:13px}.review-account{display:flex;align-items:center;gap:10px;padding:12px;background:var(--mm-surface-2);border:1px solid var(--mm-hairline);border-radius:8px}.review-account>svg{width:18px;color:var(--accent-ink)}.review-account span,.review-account strong{display:block}.review-account span{font-size:11px;color:var(--mm-ink-2)}.review-account strong{font-size:13px;margin-top:2px}.review-explanation{font-size:12px;color:var(--mm-ink-2);line-height:1.65;margin:16px 0}.review-warning{font-size:12px;padding:10px;background:var(--mm-warn-soft);color:var(--mm-warn);margin-bottom:12px;border-radius:7px}.review-back{display:flex;justify-content:center;align-items:center;gap:6px;width:100%;min-height:42px;margin-top:8px}.review-back svg{width:15px}.order-review-dialog .detail-list small{display:block;font-size:11px;margin-top:3px}
+.watchlist-retry{font-size:11px;color:var(--mm-warn);background:var(--mm-warn-soft);padding:8px;text-align:center}
+.session-entry {display:grid;grid-template-columns:minmax(0,420px);justify-content:center;padding:32px}.session-entry .session-gate-card{align-items:flex-start;text-align:left;width:100%;padding:32px;border-radius:14px;box-shadow:none}.session-entry .session-gate-card .terminal-brand{margin-bottom:16px}.session-entry-steps{display:flex;flex-direction:column;gap:12px;margin:6px 0 0;padding-left:20px;color:var(--mm-ink-2);font-size:12px;line-height:1.6}.session-entry .session-gate-icon{border-radius:10px;color:var(--accent-ink);background:var(--accent-wash)}
+@media(max-width:850px){.session-entry{padding:20px}}
+
+.desk-size-select{width:100px;height:32px;font-size:11px;padding:4px 6px;border-radius:6px}.watchlist-pagination{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:42px;font-size:10px;color:var(--mm-ink-2)}.watchlist-pagination button{min-height:36px;padding:4px 8px;color:var(--accent-ink)}
+@media(max-width:1180px){.desk-size-select{display:none}}
+
+/* Task flow: instrument selection → shared order draft → review → position management. */
+.terminal-identity{font-size:14px;font-weight:600;letter-spacing:-.02em}.terminal-identity>svg{width:22px;height:22px;color:var(--mm-ink-2)}
+.desk-new-order{height:32px;min-height:32px;padding:5px 12px;font-size:12px;border-radius:6px;white-space:nowrap}.desk-new-order svg{width:15px}
+.instrument-tabs{display:flex;align-items:stretch;gap:3px;min-height:38px;border-bottom:1px solid var(--mm-hairline);background:var(--mm-surface-2);flex-shrink:0;padding:0 6px}
+.instrument-tabs>div{display:flex;overflow:auto;min-width:0}.instrument-tabs>div>span{display:flex;align-items:center;flex-shrink:0;border-right:1px solid var(--mm-hairline);position:relative}.instrument-tabs .is-active{background:var(--mm-surface);box-shadow:inset 0 -2px var(--mm-accent)}
+.instrument-tabs button{min-height:36px;padding:0 12px;font-size:11px;color:var(--mm-ink-2)}.instrument-tabs .is-active>button:first-child{color:var(--mm-ink);font-weight:600}.instrument-tabs .instrument-tab-close{padding:0 7px}.instrument-tabs svg{width:13px;height:13px}.instrument-tabs .instrument-tab-add{padding:0 12px}
+.chart-order-actions{display:flex;gap:7px;padding:10px 14px;flex-shrink:0}.chart-order-start{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:104px;padding:8px 12px;border-radius:6px;border:1px solid var(--mm-hairline);font-variant-numeric:tabular-nums}.chart-order-start span{font-size:11px}.chart-order-start strong{font-size:16px;font-weight:600}.chart-order-start.buy{color:var(--mm-pos);background:var(--mm-pos-soft)}.chart-order-start.sell{color:var(--mm-neg);background:var(--mm-neg-soft)}
+.chart-workflow-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-basis:100%;padding:6px 14px;border-top:1px solid var(--mm-line-soft);font-size:10px;color:var(--mm-ink-2)}.chart-workflow-tools>span{display:flex;align-items:center;gap:5px}.chart-workflow-tools>span>svg{width:13px}
+.chart-pending-builder{flex-basis:100%}.chart-pending-builder>.text-button{font-size:11px;min-height:28px}
+.ticket-steps{list-style:none;display:flex;gap:18px;align-items:center;padding:0 16px 12px;font-size:11px;color:var(--mm-ink-3);flex-shrink:0}.ticket-steps li[aria-current='step']{color:var(--mm-ink);font-weight:600}.ticket-steps button{font:inherit;color:inherit}.ticket-steps li[aria-current='step']::after{content:'';display:block;height:2px;margin-top:6px;background:var(--mm-accent)}
+.ticket-instrument-heading{display:flex;align-items:center;gap:8px;margin:0 16px 14px;padding:12px 0;border-block:1px solid var(--mm-line-soft);flex-wrap:wrap;flex-shrink:0}.ticket-instrument-heading strong{font-size:16px}.ticket-instrument-heading>span:last-child{font-size:11px;color:var(--mm-ink-2);flex-basis:100%}
+.ticket-chart-pick{font-size:11px;margin-top:8px}.ticket-chart-pick svg{width:14px}
+.order-review-inline{flex:1;min-height:0;overflow:auto;padding:0 16px 18px}.order-review-inline .order-review-heading{display:none}.order-review-inline .review-account{margin-top:0}.order-review-inline .detail-list{font-size:12px}.order-review-inline .place-order{margin-top:12px}.order-review-inline .review-explanation{font-size:11px}
+.activity-body{display:flex;flex:1;min-height:0;overflow:hidden}.activity-body>.activity-content{min-width:0;flex:1}.trade-inspector{width:310px;flex-shrink:0;overflow:auto;border-left:1px solid var(--mm-hairline);padding:0 18px 18px;background:var(--mm-surface-2)}.trade-inspector>header{display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--mm-surface-2);min-height:48px;z-index:3}.trade-inspector h3{font-size:13px;font-weight:600}.trade-inspector .icon-button{width:32px;height:32px}.trade-inspector .trade-detail-grid{gap:16px 10px}.trade-inspector dt{font-size:10px}.trade-inspector dd{font-size:12px}.trade-inspector .trade-detail-heading{margin-block:12px 20px}.trade-inspector-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:18px}.trade-inspector-actions .button{font-size:11px;min-height:34px;padding:6px 9px;border-radius:6px}.trade-inspector-actions svg{width:14px}
+.instrument-picker-dialog{width:min(720px,calc(100vw - 24px))}.instrument-picker-dialog .dialog-body{padding:0;overflow:hidden}.instrument-picker-list{display:flex;flex-direction:column;height:min(590px,70dvh);border:0;border-radius:0}.instrument-picker-list .market-search-wrap{margin:8px 18px 0}.instrument-picker-list .market-search-wrap input{height:44px;font-size:14px}.instrument-picker-list .market-row{min-height:66px}.instrument-picker-list .market-select{gap:14px}.instrument-picker-list .market-name strong{font-size:14px}.instrument-picker-list .market-name small{font-size:12px}.instrument-picker-list .market-price strong{font-size:14px}.instrument-picker-list .row-action{height:44px;width:44px}.instrument-picker-list .market-list{padding-inline:12px}.instrument-picker-list .market-columns{padding-inline:24px}
+.session-entry .session-gate-card{max-width:420px;margin:auto}
+@container chart (max-width:540px){.chart-order-actions{padding:6px 12px;flex-basis:100%;gap:8px}.chart-order-start{flex:1;flex-direction:row;align-items:center;justify-content:space-between}.chart-workflow-tools>span{display:none}.chart-workflow-tools{padding:5px 12px}.chart-order-mode button{font-size:10px}.instrument-tabs button{padding:0 9px}}
+@media(max-width:1180px){.desk-new-order{font-size:11px;padding:4px 8px}.terminal-v2[data-panel='trade'] .order-panel{max-width:640px}.terminal-v2.activity-collapsed .activity-body{display:flex}.trade-inspector{width:300px}}
+@media(max-width:700px){.terminal-identity>span{font-size:11px}.terminal-identity>svg{width:18px}.desk-environment{display:none}.activity-body.is-inspecting>.activity-content{display:none}.trade-inspector{width:100%;border:0}.instrument-tabs{min-height:36px}.instrument-tabs button{min-height:34px}.chart-workflow-tools{flex-wrap:wrap}.chart-workflow-tools>span{display:none}.ticket-instrument-heading{margin-bottom:10px}.ticket-steps{padding-bottom:8px}.order-panel .panel-heading{padding-block:12px}}

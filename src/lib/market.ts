@@ -1,4 +1,5 @@
 import type { SymbolItem, PriceTick } from "@/types/trading";
+import { priceDigits } from './pricePrecision';
 export const INSTRUMENTS: SymbolItem[] = [
   {
     id: "XAUUSD",
@@ -72,15 +73,8 @@ export const instrument = (symbol: string) =>
     symbol,
     name: symbol,
     category: "All",
-    digits: 5,
+    digits: priceDigits(symbol),
   } as SymbolItem);
-export const formatPrice = (value: number | undefined, symbol: string) =>
-  typeof value === "number" && Number.isFinite(value)
-    ? value.toLocaleString("en-US", {
-        minimumFractionDigits: instrument(symbol).digits,
-        maximumFractionDigits: instrument(symbol).digits,
-      })
-    : "—";
 export const number = (value: unknown) => {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
@@ -103,10 +97,15 @@ export const SAMPLE_QUOTES: Record<string, PriceTick> = Object.fromEntries(
 export const TIMEFRAMES: Record<string, number> = {
   "1m": 60,
   "5m": 300,
+  "10m": 600,
   "15m": 900,
+  "30m": 1800,
   "1h": 3600,
+  "2h": 7200,
   "4h": 14400,
   "1D": 86400,
+  "1W": 604800,
+  "1M": 2592000,
 };
 // Preview data is used only without a configured feed or an authenticated account.
 export const PREVIEW_FEED = !process.env.NEXT_PUBLIC_PRICEFEED_URL;

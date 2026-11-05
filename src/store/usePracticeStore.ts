@@ -2,9 +2,11 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { newPracticeAccount, trimHistory, type PracticeOrder, placePractice, managePractice, settlePractice, movePracticeLevel, closePracticeVolume, closePracticeMany, type BulkClose, type PracticeLevel, type PracticeAccount, type Quotes } from '@/lib/practice';
 import { useWorkspaceStore } from './useWorkspaceStore';
+import { receiptNotification } from '@/lib/tradeNotifications';
 import { playTradeSound } from '@/lib/tradeSound';
 import { readPracticeAccount } from '@/lib/practicePersistence';
 import { SAMPLE_QUOTES } from '@/lib/market';
+import {editPracticeOrder} from '@/lib/practice';
 import type { TradeRequest } from '@/lib/contracts';
 function savedAccount(fallback: PracticeAccount) {
     if (typeof window === 'undefined')
@@ -30,6 +32,7 @@ type PracticeState = {
         tp?: number;
     }) => void;
     moveLevel: (id: string, level: PracticeLevel, price: number | undefined) => void;
+    editOrder:(id:string,changes:{sl?:number;tp?:number;limitPrice?:number})=>void;
     closeVolume: (id: string, lots: number) => void;
     closeMany: (which: BulkClose, symbol?: string) => { done: number; skipped: number };
     reset: () => void;
@@ -47,10 +50,10 @@ function announce(before: PracticeOrder[], after: PracticeOrder[]) {
         w.notify(`Stop-out: ${stopped.length} position${stopped.length === 1 ? '' : 's'} closed · ${money(stopped.reduce((n, o) => n + o.pnl, 0))}`, 'warning', { sticky: true });
     for (const o of changed.filter(o => !stopped.includes(o))) {
         const side = `${o.orderType === 'BUY' ? 'Buy' : 'Sell'} ${o.lotSize} ${o.symbol}`;
-        if (o.status === 'OPEN')
-            w.notify(`${o.id} ${side} ${o.executionType.toLowerCase()} filled at ${o.openPrice}`, 'success');
-        else if (o.status === 'REJECTED')
-            w.notify(`${o.id} ${side} rejected: ${o.reason ?? 'not filled'}`, 'error');
+        if (o.status === 'OPEN' || o.status === 'REJECTED') {
+            const notice=receiptNotification({id:o.id,key:o.id,practice:true,startedAt:Date.now(),knownIds:[],request:{symbol:o.symbol,orderType:o.orderType,executionType:o.executionType,lotSize:o.lotSize},status:o.status==='OPEN'?'open':'rejected',fillPrice:o.openPrice,message:o.reason});
+            if(notice)w.notify(notice.text,notice.kind,notice.options);
+        }
         else if (o.status === 'CLOSED')
             w.notify(`${o.id} ${side} · ${o.reason ?? 'closed'} ${money(o.pnl)}`, o.reason === 'Stop loss' ? 'warning' : 'success');
     }
@@ -98,13 +101,14 @@ export const usePracticeStore = create<PracticeState>()(persist((set, get) => ({
     moveLevel: (id, level, price) => { if (get().mode !== 'practice')
         throw new Error('Switch to practice mode first.'); set(s => ({ account: movePracticeLevel(savedAccount(s.account), id, level, price, s.quotes) })); if (useWorkspaceStore.getState().tradeSounds)
         playTradeSound('updated'); },
+    editOrder:(id,changes)=>{if(get().mode!=='practice')throw new Error('Switch to practice mode first.');set(s=>({account:editPracticeOrder(savedAccount(s.account),id,changes,s.quotes)}));},
     closeVolume: (id, lots) => { if (get().mode !== 'practice')
         throw new Error('Switch to practice mode first.'); set(s => ({ account: closePracticeVolume(savedAccount(s.account), id, lots, s.quotes) })); if (useWorkspaceStore.getState().tradeSounds)
         playTradeSound('closed'); },
     closeMany: (which, symbol) => { if (get().mode !== 'practice')
         throw new Error('Switch to practice mode first.'); const r = closePracticeMany(savedAccount(get().account), which, get().quotes, symbol); set({ account: r.account }); if (r.done && useWorkspaceStore.getState().tradeSounds)
         playTradeSound('closed'); return { done: r.done, skipped: r.skipped }; },
-    reset: () => set({ account: newPracticeAccount() }),
+    reset: () => { useWorkspaceStore.getState().clearToasts(); set({ account: newPracticeAccount() }); },
 }), { name: 'mm-terminal-practice-v1', version: 1, storage: practiceStorage, partialize: s => ({ account: s.account }), merge: (persisted, current) => {
         // Only account data can hydrate; modes, quotes and actions never come from storage.
         return { ...current, account: readPracticeAccount(JSON.stringify({ state: persisted }), current.account) };

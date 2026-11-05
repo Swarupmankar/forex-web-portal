@@ -1,7 +1,8 @@
 'use client';
+import { useMarketDisplay } from '@/hooks/useMarketDisplay';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { X } from 'lucide-react';
-import { formatPrice } from '@/lib/market';
+
 import type { Candle } from '@/lib/chart';
 import { STUDY_INFO, type Studies, type StudyKey } from '@/lib/indicators';
 
@@ -15,6 +16,7 @@ export const ChartReadout = forwardRef<ChartReadoutHandle, {
   studies: Studies;
   onRemove: (key: StudyKey) => void;
 }>(function ChartReadout({ symbol, timeframe, latest, studies, onRemove }, ref) {
+  const { formatPrice } = useMarketDisplay();
   const [hovered, setHovered] = useState<Candle>();
   useImperativeHandle(ref, () => ({ hover: setHovered }), []);
   useEffect(() => setHovered(undefined), [symbol, timeframe]);

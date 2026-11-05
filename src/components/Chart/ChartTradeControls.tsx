@@ -1,96 +1,67 @@
 "use client";
-import { useEffect, useState } from 'react';
-import { useShallow } from 'zustand/react/shallow';
-import { Crosshair, Zap, ShieldCheck, X, MousePointer2 } from 'lucide-react';
-import { useUIStore } from '@/store/useUIStore';
-import { useWorkspaceStore } from '@/store/useWorkspaceStore';
-import { useOrderFlow } from '@/store/useOrderFlow';
-import { formatPrice, instrument } from '@/lib/market';
-import { chartPrice } from '@/lib/chartInteraction';
-import { useExecutableQuote } from '@/hooks/useExecutableQuote';
-import { useOrderSubmit } from '@/components/OrderEntry/useOrderSubmit';
-import { useOneClick } from '@/components/OrderEntry/useOneClick';
-import type { TradeRequest } from '@/lib/contracts';
-import { pendingAtPrice } from '@/lib/practice';
-import { ChartDraftProtection } from './ChartDraftProtection';
-import { Dialog } from '@/components/terminal/Dialog';
-import { useAccountStore } from '@/store/useAccountStore';
-import { accountKindLabel } from '@/lib/accountSessions';
+import {Crosshair, X, ShieldCheck, Zap, LoaderCircle} from 'lucide-react';
+import {useMarketDisplay} from '@/hooks/useMarketDisplay';
+import {useExecutableQuote} from '@/hooks/useExecutableQuote';
+import {useExecutionPolicy} from '@/hooks/useExecutionPolicy';
+import {useUIStore} from '@/store/useUIStore';
+import {composeOrder,composePendingOrder} from '@/lib/tradingWorkflow';
+import {pendingPriceSuggestion} from '@/lib/orderTicket';
+import {ToolbarMenu} from '@/components/terminal/ToolbarMenu';
+import {useOneClick} from '@/components/OrderEntry/useOneClick';
+import {useOrderSubmit} from '@/components/OrderEntry/useOrderSubmit';
+import {useOrderFlow} from '@/store/useOrderFlow';
+import {useWorkspaceStore} from '@/store/useWorkspaceStore';
+import {quickMarketRequest} from '@/lib/tradeExperience';
+import {needsReview} from '@/lib/volume';
 
-export function ChartTradeControls({ symbol, pickedPrice, picking, onPickToggle, onClearPick, onPriceChange, onSelect }: {
-  symbol: string; pickedPrice: number | null; picking: boolean;
-  onPickToggle: () => void; onClearPick: () => void;
-  onPriceChange: (price: number | null) => void; onSelect: (id: string) => void;
+// Quick market orders share the ticket's validated submission path.
+export function ChartTradeControls({symbol,picking,onPickToggle,onClearPick}: {
+  symbol:string;picking:boolean;onPickToggle:()=>void;
+  onClearPick:()=>void;
 }) {
-  const { submit, check, submitting, instantFor, canExecute, practice, policy, verifying, spec } = useOrderSubmit();
-  const oneClick = useOneClick();
-  const quote = useExecutableQuote(symbol);
-  const limits = spec(symbol);
-  const u = useUIStore(useShallow(s => ({ volumeInput:s.volumeInput, setVolumeInput:s.setVolumeInput, setVolumeLots:s.setVolumeLots, enableTPSL:s.enableTPSL, stopLoss:s.stopLoss, takeProfit:s.takeProfit })));
-  const account = useAccountStore(s => s.accounts.find(a => a.id === s.activeId));
-  const inFlight = useOrderFlow(s => s.inFlight);
-  const [riskOpen, setRiskOpen] = useState(false), [review, setReview] = useState<TradeRequest | null>(null), [error, setError] = useState('');
-  const [entryText, setEntryText] = useState('');
-  const pending = picking || pickedPrice !== null;
-  const lots = u.volumeInput;
-  const busy = submitting || inFlight || !!verifying;
-  const protectionCount = u.enableTPSL ? Number(!!u.stopLoss) + Number(!!u.takeProfit) : 0;
-  useEffect(() => { setReview(null); setRiskOpen(false); setError(''); setEntryText(''); onClearPick(); }, [symbol, practice, account?.id, canExecute, onClearPick]);
-  useEffect(() => { setEntryText(pickedPrice === null ? '' : String(pickedPrice)); }, [pickedPrice]);
-  function clear() { setEntryText(''); setError(''); onClearPick(); }
-  function typeFor(side: 'BUY' | 'SELL') {
-    const reference = side === 'BUY' ? quote?.ask : quote?.bid;
-    return pending && pickedPrice !== null && reference ? pendingAtPrice(side, pickedPrice, reference) : 'MARKET';
+  const {formatPrice,instrument}=useMarketDisplay();
+  const quote=useExecutableQuote(symbol);
+  const policy=useExecutionPolicy();
+  const oneTap=useOneClick(),oneTapClose=useOneClick('close');
+  const {submit,check,spec,specReady}=useOrderSubmit();
+  const volume=useUIStore(s=>s.volumeInput);
+  const inFlight=useOrderFlow(s=>s.inFlight),verifying=useOrderFlow(s=>s.verifying);
+  const receipt=useOrderFlow(s=>s.receipt);
+  const limits=spec(symbol);
+  const locked=inFlight||!!verifying;
+  const quickIssue=oneTap.on?check(quickMarketRequest(symbol,'BUY',volume)):null;
+  const pending=useUIStore(s=>s.orderMode==='PENDING');
+  function market() {useUIStore.getState().setOrderMode('MARKET');onClearPick();}
+  async function deal(side:'BUY'|'SELL') {
+    if(!oneTap.on){composeOrder(symbol,side);return;}
+    const request=quickMarketRequest(symbol,side,useUIStore.getState().volumeInput);
+    if(needsReview(request.lotSize)){composeOrder(symbol,side);useWorkspaceStore.getState().notify('Large volume: review the order in the ticket.','info');return;}
+    const result=await submit(request);
+    if(!result.ok&&result.error)useWorkspaceStore.getState().notify(result.error,result.unknown?'warning':'error');
+    if(result.ok&&result.id)useWorkspaceStore.getState().selectTrade(result.id);
   }
-  async function send(request: TradeRequest) {
-    const result = await submit(request);
-    if (result.ok) { setReview(null); clear(); if (result.id) onSelect(result.id); }
-    else if (result.error) setError(result.error);
-  }
-  function order(side: 'BUY' | 'SELL') {
-    setError('');
-    if (pending && pickedPrice === null) { setError('Choose an entry price on the chart or enter it below.'); return; }
-    const request: TradeRequest = { symbol, orderType:side, lotSize:Number(lots), executionType:typeFor(side), ...(pending ? {limitPrice:pickedPrice!} : {}), ...(u.enableTPSL && u.stopLoss ? {sl:Number(u.stopLoss)} : {}), ...(u.enableTPSL && u.takeProfit ? {tp:Number(u.takeProfit)} : {}) };
-    const invalid = check(request);
-    if (invalid) { setError(invalid); return; }
-    u.setVolumeLots(request.lotSize);
-    // A picked price is always a draft. One-click only bypasses review for chart MARKET orders.
-    if (!pending && instantFor(request.lotSize)) void send(request);
-    else setReview(request);
-  }
-  if (!canExecute) return <div className="chart-account-context"><span><ShieldCheck />{account ? `${accountKindLabel(account.kind)} account ${account.username}` : 'Market preview'}</span><span title={policy.reason}>{policy.mode === 'close-only' ? 'Close-only' : 'View only'}</span><button onClick={() => { const w=useWorkspaceStore.getState(); w.setFocus(false); w.setPanel('activity'); w.setActivityExpanded(true); useUIStore.getState().setBottomTab('positions'); }}>View positions</button></div>;
   return <>
-    <div className="chart-dealing" aria-label="Chart trading">
-      {(['SELL','BUY'] as const).map((side, index) => <div className="chart-deal-slot" key={side}>
-        {index === 1 && <label className="chart-lots"><span>Lots</span><input aria-label="Chart order volume" type="number" min={limits.min} max={limits.max} step={limits.step} inputMode="decimal" value={lots} onChange={e=>u.setVolumeInput(e.target.value)} /></label>}
-        <button className={`chart-deal ${side.toLowerCase()}`} disabled={busy || (pending && pickedPrice === null)} aria-label={`${pending || !instantFor(Number(lots)) ? 'Review' : 'Place'} chart ${side.toLowerCase()} ${pending ? typeFor(side).toLowerCase()+' order' : 'market order'}`} onClick={()=>order(side)}>
-          <span>{side === 'BUY' ? 'Buy' : 'Sell'}{pending && pickedPrice !== null ? ` ${typeFor(side).toLowerCase()}` : ''}</span>
-          <strong>{formatPrice(pending ? pickedPrice ?? undefined : side === 'BUY' ? quote?.ask : quote?.bid, symbol)}</strong>
-        </button>
-      </div>)}
+    <div className="chart-order-actions" data-one-tap={oneTap.on} aria-label="Order controls">
+      <button type="button" className="one-tap-toggle" aria-pressed={oneTap.on} onClick={()=>oneTap.set(!oneTap.on)} title="Trade from the chart at the displayed lot size"><Zap/><span>One tap {oneTap.on?'On':'Off'}</span></button>
+      {oneTap.on&&<label className="quick-lots"><span>Lots</span><input aria-label="One-tap lot size" type="number" inputMode="decimal" min={limits.min} max={limits.max} step={limits.step} value={volume} disabled={locked} onChange={e=>useUIStore.getState().setVolumeInput(e.target.value)}/></label>}
+      {(['SELL','BUY'] as const).map(side=>{
+        const issue=oneTap.on?check(quickMarketRequest(symbol,side,volume)):null;
+        const sending=inFlight&&receipt?.status==='sending'&&receipt.request.orderType===side&&receipt.request.symbol===symbol;
+        return <button className={`chart-order-start ${side.toLowerCase()}`} key={side} disabled={!policy.canPlace||locked||(oneTap.on&&(!specReady||!!issue))} title={issue??(oneTap.on?'Market order · no SL/TP':'Open order ticket')} onClick={()=>void deal(side)} aria-label={`${oneTap.on?'Place':'Create'} ${symbol} ${side.toLowerCase()}${oneTap.on?` market ${volume} lots`:''} order`}>
+          <span>{sending?<><LoaderCircle className="spin"/>Sending</>:<>{side==='BUY'?'Buy':'Sell'}{oneTap.on?` ${volume}`:''}</>}</span><strong>{formatPrice(side==='BUY'?quote?.ask:quote?.bid,symbol)}</strong>
+        </button>;
+      })}
+      <ToolbarMenu label="Order entry options" icon={<Crosshair />} className="chart-entry-menu">
+        <button aria-pressed={oneTapClose.on} onClick={()=>oneTapClose.set(!oneTapClose.on)}><Zap/>One-tap close {oneTapClose.on?'On':'Off'}</button>
+        <button aria-pressed={!pending} onClick={()=>{market();composeOrder(symbol,useUIStore.getState().selectedOrderSide);}}>Market order</button>
+        {(['LIMIT','STOP'] as const).flatMap(type=>(['BUY','SELL'] as const).map(side=><button key={`${side}-${type}`} onClick={()=>composePendingOrder(symbol,side,type,pendingPriceSuggestion(side,type,quote,instrument(symbol).digits??5))} disabled={!policy.canPlace}>{side==='BUY'?'Buy':'Sell'} {type.toLowerCase()}</button>))}
+        <button disabled={!policy.canPlace} onClick={()=>{const draft=useUIStore.getState();draft.prepareOrder(symbol,draft.selectedOrderSide);draft.setExecutionType(draft.pendingOrderType);onPickToggle();}}><Crosshair />Pick entry on chart</button>
+      </ToolbarMenu>
     </div>
-    <div className="chart-execution-toolbar" aria-label="Chart order tools">
-      <div className="chart-order-mode" aria-label="Chart order type"><button aria-pressed={!pending} onClick={clear}>Market</button><button aria-pressed={pending} onClick={()=>{if(!pending) onPickToggle();}}><Crosshair />Pending order</button></div>
-      <button className={`chart-execution-option ${oneClick.on ? 'is-on' : ''}`} aria-pressed={oneClick.on} aria-label={`One-click market orders ${oneClick.on ? 'on' : 'off'}`} onClick={()=>oneClick.set(!oneClick.on)} title="One-click applies to market orders. Pending orders always open a review."><Zap /><span>One-click</span><b>{oneClick.on ? 'On' : 'Off'}</b></button>
-      <button className="chart-execution-option" aria-label="Set new-order stop loss and take profit" aria-haspopup="dialog" onClick={()=>setRiskOpen(true)}><ShieldCheck /><span>New-order SL/TP</span>{protectionCount > 0 && <b>{protectionCount}</b>}</button>
-    </div>
-    {pending ? <div className="chart-pending-builder">
-      <label>Entry price<input aria-label="Pending chart entry price" type="number" step={10 ** -(instrument(symbol).digits ?? 5)} min="0" inputMode="decimal" placeholder="Pick on chart or enter price" value={entryText} onChange={e=>{ setEntryText(e.target.value); onPriceChange(chartPrice(e.target.value, instrument(symbol).digits ?? 5)); }} /></label>
-      <button className="chart-repick" aria-pressed={picking} onClick={onPickToggle}><MousePointer2 />{picking ? 'Choosing on chart…' : 'Pick on chart'}</button>
-      <button className="icon-button" onClick={clear} aria-label="Cancel pending order draft"><X /></button>
-      <p role="status">{picking ? 'Click the chart to set your entry. This does not place an order.' : 'Drag the entry handle to adjust. Choose Buy or Sell above to review.'}</p>
-    </div> : <div className="chart-execution-hint">{oneClick.on && instantFor(Number(lots)) ? 'Buy / Sell sends a market order immediately.' : oneClick.on ? 'This volume requires an order review.' : 'Buy / Sell opens an order review.'}<span>{practice ? 'Practice · virtual funds' : account ? `${accountKindLabel(account.kind)} · ${account.username}` : ''}</span></div>}
-    {verifying && <p className="chart-order-error" role="status">Confirming your previous order. New orders are paused until its status is known.</p>}
-    {error && !review && <div className="chart-order-error" role="alert">{error}<button onClick={()=>setError('')} aria-label="Dismiss chart trade error"><X /></button></div>}
-    {riskOpen && <ChartDraftProtection symbol={symbol} entry={pickedPrice} onClose={()=>setRiskOpen(false)} />}
-    {oneClick.dialog}
-    {review && <Dialog title="Review chart order" onClose={()=>{setReview(null);setError('');}}>
-      <div className="review-instrument"><span className={`side-label ${review.orderType.toLowerCase()}`}>{review.orderType}</span><h3>{review.symbol}</h3><span>{review.lotSize} lots</span></div>
-      <dl className="detail-list"><div><dt>Order type</dt><dd>{review.orderType} {review.executionType}</dd></div><div><dt>Entry price</dt><dd>{formatPrice(review.limitPrice ?? (review.orderType==='BUY' ? quote?.ask : quote?.bid),symbol)}</dd></div><div><dt>Stop loss</dt><dd>{review.sl ? formatPrice(review.sl,symbol) : 'Not set'}</dd></div><div><dt>Take profit</dt><dd>{review.tp ? formatPrice(review.tp,symbol) : 'Not set'}</dd></div><div><dt>Account</dt><dd>{practice ? 'Practice · virtual USD' : account?.username ?? 'Connected account'}</dd></div></dl>
-      <p className="notice-note">{review.executionType !== 'MARKET' ? 'This order waits at your chosen price. It does not open a position immediately.' : practice ? 'Simulated execution using virtual funds.' : 'Submitting sends this order for execution. The fill price may differ.'}</p>
-      {error && <p className="form-error" role="alert">{error}</p>}
-      <button className={`button full-width place-order ${review.orderType.toLowerCase()}`} disabled={busy} onClick={()=>void send(review)}>{submitting ? 'Placing…' : `Place ${practice ? 'practice ' : ''}${review.orderType.toLowerCase()} ${review.executionType.toLowerCase()}`}</button>
-      <button className="text-button full-width" disabled={busy} onClick={()=>{setReview(null);setError('');}}>Back to chart draft</button>
-    </Dialog>}
+    {oneTap.on&&quickIssue&&<div className="chart-workflow-tools quick-trade-issue" role="status">{quickIssue}</div>}
+    {oneTap.dialog}{oneTapClose.dialog}
+    {!policy.canPlace && <div className="chart-workflow-tools"><span className="chart-execution-policy"><ShieldCheck/>{policy.mode==='close-only'?'Close-only account':'View-only account'}</span></div>}
+    {picking&&<div className="chart-pick-prompt" role="status"><Crosshair/><span>Click a price on the chart. Then set volume and place the pending order.</span><button onClick={market} aria-label="Cancel choosing chart entry"><X/></button></div>}
+
   </>;
 }

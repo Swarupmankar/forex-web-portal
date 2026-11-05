@@ -3,6 +3,8 @@ export type ChartOverlayAnchor = {
   kind: 'entry' | 'sl' | 'tp';
   y: number;
   selected: boolean;
+  /** Keep pending orders, positions and opposite sides in separate groups. */
+  group?: string;
 };
 
 export type ChartOverlayLabel<T extends ChartOverlayAnchor> = {
@@ -22,6 +24,17 @@ export type ChartOverlayLayoutOptions = {
   gap?: number;
   groupDistance?: number;
 };
+
+/** Only a real, matching selection may contribute edit-preview price lines. */
+export function managementPreviewLevels(
+  preview: { id: string; changes: { sl?: number; tp?: number; limitPrice?: number } } | undefined,
+  selectedId: string | undefined,
+) {
+  if (!preview || !selectedId || preview.id !== selectedId) return [];
+  return Object.entries(preview.changes)
+    .filter(([, price]) => Number.isFinite(price) && Number(price) > 0)
+    .map(([key, price]) => ({ id: `preview-${key}`, price: Number(price), title: `Preview ${key === 'limitPrice' ? 'entry' : key.toUpperCase()}`, color: '#b79238' }));
+}
 
 const rank = { entry: 0, sl: 1, tp: 2 } as const;
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
@@ -68,7 +81,7 @@ export function layoutChartOverlays<T extends ChartOverlayAnchor>(
   let cluster: T[] = [];
   for (const anchor of background) {
     // Compare against the first price to avoid chaining a large range together.
-    if (cluster.length && anchor.y - cluster[0].y > groupDistance) {
+    if (cluster.length && (anchor.y - cluster[0].y > groupDistance || anchor.group !== cluster[0].group)) {
       add(cluster);
       cluster = [];
     }

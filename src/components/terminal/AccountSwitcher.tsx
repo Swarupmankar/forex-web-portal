@@ -80,7 +80,7 @@ export function AccountSwitcher(summary: AccountSummary) {
         <button className={`switch-account-row ${!practice && a.id === activeId ? 'is-active' : ''} ${a.expired ? 'is-expired' : ''}`} aria-label={a.expired ? `Session ended for ${a.username}. Open it again from the client portal` : `Switch to ${accountKindLabel(a.kind)} account ${a.username}`} aria-pressed={!practice && a.id === activeId} onClick={() => { if (a.expired) goToPortalSignIn(); else choose(a.id); }}>
           <span className="switch-account-icon"><Wallet /></span>
           <span className="switch-account-copy"><strong>{a.nickname || a.username}<span className={`account-kind-tag is-${a.kind}`}>{accountKindLabel(a.kind)}</span></strong><small>{a.expired ? 'Session ended · Open from client portal' : [a.nickname ? a.username : '', a.serverName || a.brokerName, a.leverage ? `1:${a.leverage}` : '', a.currency].filter(Boolean).join(' · ') || 'Trading account'}</small></span>
-          <span className="switch-account-end"><strong>{money(!practice && a.id === activeId ? summary.balance ?? a.balance : a.balance, a.currency)}</strong>{!practice && a.id === activeId && <Check aria-label="Current account"/>}</span>
+          <span className="switch-account-end"><strong>{money(!practice && a.id === activeId ? summary.balance : a.balance, a.currency)}</strong>{!practice && a.id === activeId && <Check aria-label="Current account"/>}</span>
         </button>
         <button className="icon-button disconnect-account" aria-label={`Disconnect account ${a.username}`} title="Disconnect this account" onClick={() => { disconnectTradingAccount(a.id); if (!useAccountStore.getState().accounts.length) goToPortalSignIn(); }}><LogOut /></button>
       </div>)}

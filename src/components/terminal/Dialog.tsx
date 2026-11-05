@@ -9,6 +9,7 @@ export function Dialog({
   wide = false,
   className = '',
   restoreFocus,
+  initialFocus,
 }: {
   title: string;
   children: ReactNode;
@@ -17,11 +18,13 @@ export function Dialog({
   className?: string;
   // Where focus goes on close if the element that opened the dialog no longer exists (e.g. a closed row).
   restoreFocus?: () => HTMLElement | null | undefined;
+  initialFocus?: () => HTMLElement | null | undefined;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   const restoreRef = useRef(restoreFocus);
+  const initialRef = useRef(initialFocus);
   restoreRef.current = restoreFocus;
   useEffect(() => {
     const before = document.activeElement as HTMLElement;
@@ -32,7 +35,7 @@ export function Dialog({
           'button:not(:disabled),a[href],input,select,textarea,[tabindex="0"]',
         ) || [],
       ).filter((e) => e.getClientRects().length);
-    focusable()[0]?.focus();
+    (initialRef.current?.() ?? focusable()[0])?.focus();
     const key = (e: KeyboardEvent) => {
       if (e.key === "Escape") closeRef.current();
       if (e.key === "Tab") {

@@ -41,3 +41,13 @@ test('large orders always get a review',()=>{
  assert.equal(needsReview(9.99),false);
  assert.equal(needsReview(10),true);
 });
+
+test('partial-close presets never advertise rounded or duplicate percentages',async()=>{
+ const {closeVolumePresets}=await import('data:text/javascript;base64,'+Buffer.from(transpile('../src/lib/volume.ts')).toString('base64'));
+ assert.deepEqual(closeVolumePresets(0.01),[{lots:0.01,label:'All · 0.01 lots'}]);
+ assert.deepEqual(closeVolumePresets(0.02),[{lots:0.01,label:'50% · 0.01 lots'},{lots:0.02,label:'All · 0.02 lots'}]);
+ assert.deepEqual(closeVolumePresets(0.03),[{lots:0.03,label:'All · 0.03 lots'}]);
+ assert.deepEqual(closeVolumePresets(0.04).map(p=>p.lots),[0.01,0.02,0.04]);
+ assert.deepEqual(closeVolumePresets(0.3).map(p=>p.lots),[0.15,0.3]);
+ for(const invalid of [NaN,0,-1,0.001,100.01]) assert.deepEqual(closeVolumePresets(invalid),[]);
+});

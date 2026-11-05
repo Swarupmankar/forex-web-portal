@@ -1,0 +1,545 @@
+/* Approved desktop flow: Watchlist → Chart / Trade → Portfolio → History.
+   Screen containers own layout; shared chart, ticket and order components own behavior. */
+body {font-family:var(--mm-font-body)}
+.terminal-desktop {height:100dvh;display:flex;flex-direction:column;min-height:0;overflow:hidden;font-family:var(--mm-font-body)}
+.terminal-desktop :is(h1,h2,h3) {font-family:var(--mm-font-display)}
+.terminal-desktop [hidden] {display:none!important}
+.terminal-desktop .panel {border:1px solid var(--mm-hairline);border-radius:10px;box-shadow:none;background:var(--mm-surface);min-height:0;min-width:0;overflow:hidden}
+.terminal-desktop .terminal-header {height:72px;min-height:72px;padding:0 24px;gap:24px}
+.terminal-desktop .terminal-identity {font-size:14px;gap:10px}
+.desktop-navigation {display:flex;align-items:center;gap:4px;flex-shrink:0}
+.desktop-navigation button {display:flex;align-items:center;gap:7px;padding:10px 13px;border-radius:7px;font-size:12px;font-weight:600;color:var(--mm-ink-2);white-space:nowrap;min-height:40px}
+.desktop-navigation button:hover {background:var(--mm-surface-2)}
+.desktop-navigation button[aria-current='page'] {background:var(--mm-accent);color:var(--mm-on-accent)}
+.desktop-navigation svg {width:17px;height:17px}
+.terminal-desktop .terminal-search {width:36px;height:36px;padding:0;justify-content:center;background:transparent;border:0;margin-left:auto;flex-shrink:0}
+.terminal-desktop .terminal-search :is(span,kbd) {display:none}
+.terminal-desktop .header-actions {margin-left:0;gap:4px}
+.terminal-desktop .header-deposit {display:none}
+.terminal-desktop .account-selector {min-width:176px;background:var(--mm-surface-2);border-color:transparent}
+.terminal-desktop .account-selector-text strong {font-size:14px}
+.desktop-account-summary {padding:16px 24px;flex-shrink:0;background:var(--mm-surface);border-bottom:1px solid var(--mm-hairline);display:flex;align-items:center;gap:18px;min-height:82px}
+.desktop-account-summary dl {display:flex;align-items:center;flex:1;gap:0;margin:0;min-width:0}
+.desktop-account-summary dl>div {padding:0 28px;flex:1;min-width:0}
+.desktop-account-summary dl>div:first-child {padding-left:0;flex:1.2;border-right:1px solid var(--mm-hairline)}
+.desktop-account-summary dt {font-size:11px;color:var(--mm-ink-2);white-space:nowrap}
+.desktop-account-summary dt span {font-size:10px}
+.desktop-account-summary dd {font-size:18px;letter-spacing:-.5px;font-weight:600;margin:4px 0 0;font-variant-numeric:tabular-nums;white-space:nowrap}
+.desktop-account-summary dl>div:first-child dd {font-size:23px;line-height:1.3}
+.summary-state {font-size:11px;color:var(--mm-warn);max-width:140px}
+.summary-state button {display:flex;gap:6px;align-items:center}
+.desktop-heading {display:flex;align-items:center;justify-content:space-between;gap:16px;padding:23px 24px 19px;flex-shrink:0}
+.desktop-heading h1 {font-size:24px;font-weight:700;letter-spacing:-.7px}
+.desktop-heading p {font-size:12px;color:var(--mm-ink-2);margin-top:4px}
+.desktop-heading-actions {display:flex;align-items:center;gap:8px}
+.desktop-heading .button {min-height:38px;padding:8px 12px;border-radius:7px;font-size:12px;gap:7px}
+.desktop-heading .button svg {width:15px;height:15px}
+.desktop-environment {font-size:10px;color:var(--mm-ink-2);border:1px solid var(--mm-hairline);padding:3px 7px;border-radius:4px;margin-right:6px}
+.desktop-workspace {flex:1;min-height:0;min-width:0;padding:0 24px 20px;display:flex;overflow:hidden}
+.watchlist-workspace {display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:20px;width:100%;min-height:0;min-width:0}
+.terminal-desktop .markets-panel {display:flex;flex-direction:column;height:100%;min-width:0;min-height:0}
+.watchlist-table-panel .panel-heading {padding:16px 18px 12px}
+.watchlist-table-panel .panel-heading h2 {font-size:14px}
+.watchlist-table-panel .panel-heading .icon-button {width:36px;height:36px}
+.watchlist-table-panel .market-search-wrap {margin:0 18px;background:var(--mm-surface);border-radius:7px}
+.watchlist-table-panel .market-search-wrap input {height:40px;font-size:12px}
+.watchlist-table-panel .market-filters {padding:12px 18px;gap:5px}
+.watchlist-table-panel .market-filters button {font-size:11px;padding:6px 10px}
+.watchlist-table-panel .market-filters [aria-pressed='true'] {background:var(--mm-accent);color:var(--mm-on-accent)}
+.watchlist-table-panel .market-list {padding:0}
+.watchlist-table {width:100%;min-width:630px;border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums}
+.watchlist-table th {text-align:right;position:sticky;top:0;z-index:1;background:var(--mm-surface-2);color:var(--mm-ink-2);font-size:11px;font-weight:400;padding:10px 14px;border-block:1px solid var(--mm-line-soft);white-space:nowrap}
+.watchlist-table th:nth-child(2) {text-align:left}
+.watchlist-table th:first-child,.watchlist-table td:first-child {width:44px;padding-left:12px;padding-right:0}
+.watchlist-table td {height:76px;padding:10px 14px;border-bottom:1px solid var(--mm-line-soft);text-align:right;font-size:13px;font-weight:600;white-space:nowrap}
+.watchlist-table tr.selected {background:var(--accent-wash)}
+.watchlist-table tbody tr:hover {background:var(--mm-surface-2)}
+.watchlist-table tr.selected td:nth-child(2) strong {text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px}
+.watchlist-instrument {display:flex;align-items:center;gap:12px;min-width:180px;min-height:44px;text-align:left;max-width:240px}
+.watchlist-instrument span {min-width:0;overflow:hidden}
+.watchlist-instrument strong {font-size:13px;font-weight:700}
+.watchlist-instrument small {display:block;color:var(--mm-ink-2);font-size:11px;font-weight:400;max-width:190px;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+.watchlist-table .row-action {width:32px;height:36px}
+.watchlist-table .row-action.is-favorite svg {fill:currentColor}
+.watchlist-table .watchlist-bid {color:var(--mm-neg)}
+.watchlist-table .watchlist-ask {color:var(--mm-pos)}
+.watchlist-table .watchlist-spread {font-size:12px;font-weight:400;color:var(--mm-ink-2)}
+.watchlist-row-actions {display:flex;align-items:center;justify-content:flex-end;gap:6px}
+.watchlist-row-actions>button {padding:6px 9px;min-height:32px;border:1px solid var(--mm-hairline);border-radius:5px;font-size:11px;font-weight:600;background:var(--mm-surface)}
+.watchlist-row-actions>button:hover {border-color:var(--mm-line-strong)}
+.watchlist-table-panel .markets-bottom {padding:12px 18px}
+.watchlist-table-panel .watchlist-pagination {padding:8px 16px}
+.instrument-details {display:flex;flex-direction:column;align-self:start;max-height:100%;padding:22px;overflow:auto!important}
+.instrument-details-title {display:flex;align-items:center;gap:12px;min-width:0}
+.instrument-details-title .instrument-art {--instrument-size:40px;flex-shrink:0}
+.instrument-details-title h2 {font-size:20px;font-weight:700;letter-spacing:-.5px}
+.instrument-details-title p {font-size:11px;color:var(--mm-ink-2);margin-top:4px}
+.instrument-category {align-self:flex-start;font-size:10px;color:var(--mm-ink-2);border:1px solid var(--mm-hairline);border-radius:4px;padding:3px 7px;margin-top:16px}
+.instrument-detail-quotes {display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:20px;font-variant-numeric:tabular-nums}
+.instrument-detail-quotes button {text-align:left;border:1px solid var(--mm-hairline);padding:11px 10px;border-radius:7px;min-width:0}
+.instrument-detail-quotes button:hover {border-color:currentColor}
+.instrument-detail-quotes .sell {color:var(--mm-neg);background:var(--mm-neg-soft)}
+.instrument-detail-quotes .buy {color:var(--mm-pos);background:var(--mm-pos-soft)}
+.instrument-detail-quotes span {display:block;font-size:11px}
+.instrument-detail-quotes strong {display:block;font-size:16px;font-weight:700;margin-top:5px;letter-spacing:-.4px;overflow-wrap:anywhere}
+.instrument-feed {display:flex;align-items:center;gap:6px;font-size:10px;color:var(--mm-ink-2);margin-top:10px}
+.instrument-specification {margin:22px 0;display:flex;flex-direction:column;gap:0}
+.instrument-specification>div {display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--mm-line-soft);font-size:11px}
+.instrument-specification dt {color:var(--mm-ink-2)}
+.instrument-specification dt small {display:block;font-size:10px;margin-top:2px}
+.instrument-specification dd {margin:0;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.instrument-details-actions {display:flex;flex-direction:column;gap:8px}
+.instrument-details-actions .button {min-height:40px;border-radius:7px;font-size:12px;gap:8px}
+.instrument-retry {font-size:11px;margin-bottom:12px}
+.chart-workspace {display:grid;grid-template-columns:minmax(0,1fr);width:100%;min-height:0;min-width:0;gap:20px}
+.chart-workspace.has-ticket {grid-template-columns:minmax(0,1fr) 330px}
+.terminal-desktop .chart-panel {display:flex;flex-direction:column;height:100%;min-height:0;container-type:inline-size;container-name:chart}
+.terminal-desktop .chart-panel .interactive-chart-plot {min-height:150px;flex:1}
+.ticket-slot {display:flex;min-width:0;min-height:0}
+.terminal-desktop .order-panel {display:flex;flex-direction:column;height:100%;min-height:0;min-width:0;flex:1}
+.terminal-desktop .place-order {border-radius:7px;min-height:44px;font-size:13px;box-shadow:none}
+.portfolio-workspace {display:flex;flex:1;width:100%;min-height:0;min-width:0}
+.terminal-desktop .activity-panel {display:flex;flex-direction:column;width:100%;height:100%;min-height:0}
+.terminal-desktop .activity-heading {min-height:58px;padding:6px 20px}
+.terminal-desktop .activity-tabs {gap:5px;align-self:center;overflow:visible}
+.terminal-desktop .activity-tabs button {padding:9px 12px;border-radius:6px;min-height:36px;font-size:12px}
+.terminal-desktop .activity-tabs button[aria-selected='true'] {color:var(--mm-on-accent);background:var(--mm-accent)}
+.terminal-desktop .activity-tabs button[aria-selected='true']::after {display:none}
+.terminal-desktop .activity-tabs button[aria-selected='true'] .count {background:color-mix(in srgb,var(--mm-on-accent) 15%,transparent);color:inherit}
+.terminal-desktop .activity-query-bar {padding:12px 20px;gap:12px}
+.terminal-desktop .activity-search {width:300px;background:var(--mm-surface)}
+.terminal-desktop .activity-search input {height:34px;font-size:12px}
+.terminal-desktop .activity-summary {padding:18px 22px;gap:36px;background:var(--mm-surface-2)}
+.terminal-desktop .activity-summary span {font-size:11px}
+.terminal-desktop .activity-summary strong {font-size:22px;font-weight:600}
+.terminal-desktop .orders-table th {font-size:11px;padding:11px 18px}
+.terminal-desktop .orders-table td {font-size:12px;padding:16px 18px}
+.terminal-desktop .orders-table td small {font-size:10px}
+.terminal-desktop .orders-table .row-manage {gap:5px}
+.terminal-desktop .orders-table .row-manage .icon-button {display:inline-flex;align-items:center;justify-content:center;gap:5px;width:auto;min-width:30px;height:32px;padding:5px 7px;font-size:11px;border:1px solid var(--mm-hairline);border-radius:5px}
+.terminal-desktop .row-manage svg {width:13px;height:13px}
+.terminal-desktop .row-manage .row-close {color:var(--mm-neg)}
+.terminal-desktop .orders-table tr.selected-trade-row {background:var(--accent-wash)}
+.terminal-desktop .trade-inspector {width:320px;background:var(--mm-surface);padding:0 20px 20px}
+.terminal-desktop .trade-inspector>header {background:var(--mm-surface);padding-top:10px;min-height:56px}
+.terminal-desktop .trade-detail-heading {margin-block:20px}
+.terminal-desktop .trade-detail-grid {grid-template-columns:1fr;gap:0}
+.terminal-desktop .trade-detail-grid>div {display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid var(--mm-line-soft)}
+.terminal-desktop .trade-detail-grid dt {font-size:11px}
+.terminal-desktop .trade-detail-grid dd {font-size:11px;text-align:right}
+.terminal-desktop .trade-inspector-actions {flex-direction:column}
+.terminal-desktop .trade-inspector-actions .button {min-height:38px}
+.terminal-desktop .order-receipt {margin:0 24px 12px}
+.terminal-desktop .desktop-footer {min-height:34px;padding:7px 24px;font-size:10px;gap:16px;color:var(--mm-ink-2)}
+.terminal-desktop .feed-status {display:flex}
+.terminal-desktop.desktop-chart-focused :is(.desktop-heading,.desktop-account-summary,.ticket-slot) {display:none}
+.terminal-desktop.desktop-chart-focused .chart-workspace {grid-template-columns:minmax(0,1fr)}
+.terminal-desktop.desktop-chart-focused .desktop-workspace {padding-top:16px}
+.terminal-desktop .terminal-search:focus-visible {outline:2px solid var(--mm-ink);outline-offset:3px}
+@media(min-width:1550px) {.terminal-desktop .terminal-header{gap:32px}.watchlist-workspace{grid-template-columns:minmax(0,1fr) 350px}.instrument-details{padding:26px}.instrument-detail-quotes strong{font-size:19px}.terminal-desktop .header-deposit{display:flex}}
+@media(max-width:1280px) {.terminal-desktop .terminal-header{gap:14px;padding-inline:20px}.desktop-navigation button{padding-inline:10px}.terminal-desktop .header-sound,.terminal-desktop .header-help{display:none}.desktop-account-summary dl>div{padding-inline:18px}.watchlist-workspace{grid-template-columns:minmax(0,1fr) 280px;gap:14px}.instrument-details{padding:18px}.chart-workspace.has-ticket{grid-template-columns:minmax(0,1fr) 310px;gap:14px}.watchlist-table .watchlist-spread,.watchlist-table th:nth-child(5){display:none}.watchlist-table{min-width:560px}}
+@media(max-width:1000px) {
+ .terminal-desktop .terminal-header{height:auto;min-height:110px;flex-wrap:wrap;padding:12px 20px 9px;gap:10px 16px}
+ .desktop-navigation{order:4;flex-basis:100%;justify-content:center;border-top:1px solid var(--mm-line-soft);padding-top:8px}
+ .desktop-navigation button{flex:1;justify-content:center;max-width:180px}
+ .desktop-account-summary{padding:14px 20px;min-height:74px}.desktop-account-summary dl>div{padding-inline:13px}.desktop-account-summary dd{font-size:15px}.desktop-account-summary dl>div:first-child dd{font-size:20px}
+ .desktop-heading{padding:18px 20px 14px}.desktop-heading h1{font-size:21px}.desktop-workspace{padding:0 20px 16px}
+ .watchlist-workspace{grid-template-columns:minmax(0,1fr) 250px;gap:12px}.instrument-details{padding:16px}.instrument-detail-quotes strong{font-size:14px}.watchlist-table th,.watchlist-table td{padding-inline:10px}.watchlist-instrument{min-width:155px;gap:8px}.watchlist-instrument small{max-width:150px}.watchlist-table{min-width:510px}
+ .chart-workspace.has-ticket{grid-template-columns:minmax(0,1fr) 285px;gap:12px}.terminal-desktop .trade-inspector{width:285px}
+ .desktop-heading .desktop-environment{display:none}
+}
+@media(max-width:760px) {
+ .terminal-desktop .terminal-header{min-height:106px;padding:10px 12px 8px;gap:8px}.terminal-desktop .terminal-identity>span{font-size:12px}.terminal-desktop .terminal-search{display:flex;width:30px}.terminal-desktop .account-selector{min-width:0;padding:5px 7px}.terminal-desktop .header-actions .icon-button{width:30px}.terminal-desktop .account-selector-text strong{font-size:12px}.terminal-desktop .account-selector-text small{font-size:9px;max-width:105px}.desktop-navigation button{font-size:11px;min-height:36px;padding:7px;gap:5px}.desktop-navigation svg{width:15px}
+ .desktop-account-summary{padding:10px 12px;min-height:0;gap:8px;flex-wrap:wrap}.desktop-account-summary dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));row-gap:9px}.desktop-account-summary dl>div,.desktop-account-summary dl>div:first-child{padding:0;border:0}.desktop-account-summary dt{font-size:10px}.desktop-account-summary dt span{font-size:9px}.desktop-account-summary dd,.desktop-account-summary dl>div:first-child dd{font-size:14px;margin-top:2px;line-height:1.3}.summary-state{max-width:none}
+ .desktop-heading{padding:14px 12px 12px;gap:10px}.desktop-heading h1{font-size:20px}.desktop-heading p{display:none}.desktop-heading-actions{gap:5px}.desktop-heading-actions .button{min-height:34px;font-size:11px;padding:6px 9px}.desktop-heading-actions>.button-outline{width:34px;padding:7px}.desktop-heading-actions>.button-outline span{display:none}
+ .desktop-workspace{padding:0 8px 8px;overflow:auto;display:block}.watchlist-workspace{display:flex;flex-direction:column;height:auto;min-height:100%;gap:10px}.watchlist-workspace .markets-panel{min-height:360px;height:52dvh;flex-shrink:0}.instrument-details{align-self:stretch;max-height:none;padding:16px}.instrument-details-title{float:left}.instrument-category{margin-top:8px}.instrument-specification{margin-block:16px;display:grid;grid-template-columns:1fr 1fr;column-gap:20px}.instrument-details-actions{flex-direction:row}.instrument-details-actions>*{flex:1}.instrument-detail-quotes{margin-top:12px}.instrument-detail-quotes strong{font-size:18px}.watchlist-table{min-width:520px}.watchlist-table td{height:64px}.watchlist-table-panel .panel-heading{padding:12px 14px}.watchlist-table-panel .market-search-wrap{margin-inline:14px}.watchlist-table-panel .market-filters{padding-inline:14px}
+ .chart-workspace,.chart-workspace.has-ticket{display:flex;flex-direction:column;height:100%;min-height:400px}.chart-workspace.has-ticket .ticket-slot{order:-1;min-height:100%;flex-shrink:0}.terminal-desktop[data-panel='trade'] .chart-workspace.has-ticket>.chart-panel{display:none}.terminal-desktop[data-panel='chart'] .chart-workspace.has-ticket>.ticket-slot{display:none}.terminal-desktop .chart-panel{min-height:400px}
+ .portfolio-workspace{height:100%;min-height:350px}.terminal-desktop .activity-heading{padding:6px 12px;flex-wrap:wrap;gap:5px}.terminal-desktop .activity-tabs{gap:2px}.terminal-desktop .activity-tabs button{padding:7px;font-size:11px}.terminal-desktop .activity-actions{gap:3px}.terminal-desktop .activity-query-bar{padding:10px 12px;flex-wrap:wrap}.terminal-desktop .activity-search{width:100%}.terminal-desktop .activity-summary{padding:14px 12px;gap:18px;overflow:auto}.terminal-desktop .activity-summary>div{min-width:110px}.terminal-desktop .activity-summary strong{font-size:19px}.terminal-desktop .orders-table td{padding:0}.terminal-desktop .trade-inspector{width:100%}.terminal-desktop .activity-body.is-inspecting>.activity-content{display:none}.terminal-desktop .orders-table .row-manage .icon-button{min-height:36px}
+ .terminal-desktop .order-receipt{margin:0 8px 8px}.terminal-desktop .desktop-footer{min-height:30px;padding:6px 12px}.desktop-footer>span{display:none}.terminal-desktop .feed-status{margin-left:0;width:100%;font-size:9px}.feed-status time{margin-left:auto}
+}
+@media(max-height:650px) and (min-width:1001px) {.desktop-heading{padding-block:12px}.desktop-heading p{display:none}.desktop-account-summary{padding-block:10px;min-height:64px}.terminal-desktop .terminal-header{min-height:58px;height:58px}.desktop-workspace{overflow:auto}.watchlist-workspace,.portfolio-workspace{min-height:330px}.chart-workspace{min-height:380px}}
+@media(pointer:coarse) {.terminal-desktop input,.terminal-desktop select{font-size:16px}.desktop-navigation button,.watchlist-row-actions>button,.watchlist-table .row-action,.instrument-details-actions .button{min-height:44px}.watchlist-table .row-action{min-width:40px}.terminal-desktop .orders-table .row-manage .icon-button{min-height:44px}}
+@media(prefers-reduced-motion:reduce) {.terminal-desktop *,.terminal-desktop *::before,.terminal-desktop *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* One-page terminal: header, a bounded workspace, and account figures.
+   Activity gets its own visible row. Only panels scroll, never the laptop page. */
+.terminal-single-page .terminal-header {height:52px;min-height:52px;padding:0 12px;gap:12px;flex-wrap:nowrap}
+.terminal-single-page .terminal-identity {font-size:13px;white-space:nowrap}
+.terminal-single-page .terminal-search {width:180px;height:34px;padding:0 9px;margin:0;justify-content:flex-start;border:1px solid var(--mm-hairline);background:var(--mm-surface-2)}
+.terminal-single-page .terminal-search :is(span,kbd) {display:inline;font-size:11px}
+.terminal-single-page .terminal-search kbd {margin-left:auto}
+.terminal-single-page .header-actions {gap:2px;margin-left:auto}
+.terminal-single-page .header-actions .icon-button {width:30px;height:32px}
+.terminal-single-page .header-deposit {display:none}
+.terminal-single-page .account-selector {min-width:158px;min-height:40px;padding:4px 9px;margin-left:4px}
+.terminal-single-page .account-selector-text strong {font-size:13px}
+.terminal-single-page .account-selector-text small {font-size:10px}
+.terminal-single-page .desktop-heading {padding:0;min-height:0;gap:6px;flex:1;justify-content:flex-start}
+.workspace-panel-toggles,.terminal-single-page .desktop-heading-actions {display:flex;align-items:center;gap:4px}
+.workspace-panel-toggles [aria-expanded="true"] {background:var(--mm-surface-2);border-color:var(--mm-line)}
+.terminal-single-page .desktop-heading .button {min-height:32px;padding:5px 8px;font-size:11px;gap:5px;white-space:nowrap}
+.workspace-environment {padding:8px 10px;font-size:11px;line-height:1.5;color:var(--mm-ink-2);border-bottom:1px solid var(--mm-hairline)}
+.unified-workspace {--watch-width:248px;--order-width:296px;--content-column:2;--activity-end:-1;--dock-height:clamp(180px,var(--activity-height),min(40%,calc(100% - 300px)));position:relative;flex:1;min-height:0;min-width:0;display:grid;grid-template-columns:var(--watch-width) minmax(0,1fr);grid-template-rows:minmax(292px,1fr) 8px var(--dock-height);gap:0 8px;padding:8px;overflow:hidden;overscroll-behavior:contain}
+.unified-workspace[data-markets-open="false"] {--content-column:1;grid-template-columns:minmax(0,1fr)}
+.unified-workspace>section {min-width:0;min-height:0;display:flex;scroll-margin-block:8px}
+.unified-workspace>section>.panel {width:100%;height:100%;min-height:0;min-width:0}
+.workspace-watchlist {grid-column:1;grid-row:1}
+.workspace-chart {grid-column:var(--content-column);grid-row:1}
+.workspace-ticket {grid-column:-2/-1;grid-row:1/4}
+.workspace-activity {grid-column:1/var(--activity-end);grid-row:3}
+.unified-workspace>.activity-divider {grid-column:1/var(--activity-end);grid-row:2;min-height:8px;display:grid;place-items:center;border-radius:3px}
+.unified-workspace>.activity-divider:focus-visible {outline:2px solid var(--mm-ink);outline-offset:-2px}
+.unified-workspace[data-activity-expanded="false"] {--dock-height:42px}
+.unified-workspace[data-activity-expanded="false"] .activity-divider {visibility:hidden;pointer-events:none}
+.unified-workspace[data-activity-expanded="false"] .workspace-activity :is(.activity-body,.activity-query-bar,.activity-summary) {display:none}
+.unified-workspace[data-activity-expanded="false"] .activity-actions>:not(.activity-expand) {display:none}
+.terminal-single-page .workspace-watchlist .panel-heading {padding:7px 10px 5px}
+.terminal-single-page .workspace-watchlist .panel-heading h2 {font-size:13px}
+.terminal-single-page .workspace-watchlist .panel-heading .icon-button {width:28px;height:28px}
+.terminal-single-page .workspace-watchlist .market-search-wrap {margin-inline:8px;background:var(--mm-surface)}
+.terminal-single-page .workspace-watchlist .market-search-wrap input {height:30px;font-size:11px}
+.terminal-single-page .workspace-watchlist .market-filters {padding:4px 8px;gap:2px}
+.terminal-single-page .workspace-watchlist .market-filters button {font-size:11px;padding:4px 6px;min-height:28px}
+.terminal-single-page .workspace-watchlist .market-filters [aria-pressed='true'] {background:var(--mm-accent);color:var(--mm-on-accent)}
+.terminal-single-page .workspace-watchlist .market-columns {font-size:10px;padding:4px 12px}
+.terminal-single-page .workspace-watchlist .market-list {padding:2px 5px}
+.terminal-single-page .workspace-watchlist .market-row {min-height:54px;border-bottom:1px solid var(--mm-line-soft);margin:0}
+.terminal-single-page .workspace-watchlist .market-select {gap:6px;padding:6px 3px;min-height:54px}
+.terminal-single-page .workspace-watchlist .instrument-art {--instrument-size:26px;flex-shrink:0}
+.terminal-single-page .workspace-watchlist .market-name strong {font-size:12px;font-weight:700}
+.terminal-single-page .workspace-watchlist .market-name small {font-size:10px;max-width:90px;margin-top:2px}
+.terminal-single-page .workspace-watchlist .market-price strong,.terminal-single-page .workspace-watchlist .market-price small {display:flex;justify-content:space-between;gap:5px;font-size:12px;font-weight:600;min-width:78px;line-height:1.5;margin:0}
+.terminal-single-page .workspace-watchlist .market-price strong {color:var(--mm-neg)}
+.terminal-single-page .workspace-watchlist .market-price small {color:var(--mm-pos)}
+.terminal-single-page .workspace-watchlist .market-price span {font-size:9px;font-weight:400;color:var(--mm-ink-2)}
+.terminal-single-page .workspace-watchlist .row-action {width:24px;min-width:24px;height:32px}
+.terminal-single-page .workspace-watchlist .row-action.is-favorite svg {fill:currentColor}
+.terminal-single-page .workspace-watchlist .markets-bottom {padding:5px 10px;font-size:10px}
+.terminal-single-page .workspace-chart>.chart-panel {overflow:hidden;min-height:0}
+.terminal-single-page .workspace-chart .interactive-chart-plot {flex:1;min-height:120px}
+.terminal-single-page .workspace-chart .instrument-tabs {min-height:28px}
+.terminal-single-page .workspace-chart .instrument-tabs[data-count="1"] {display:none}
+.terminal-single-page .workspace-chart .instrument-tabs button {min-height:28px;padding-block:3px;font-size:11px}
+.terminal-single-page .workspace-chart .chart-overview {display:flex;flex-wrap:wrap;align-items:center;flex-shrink:0;min-width:0}
+.terminal-single-page .workspace-chart .instrument-heading {min-height:52px;padding:6px 10px;gap:6px;flex:1;min-width:0}
+.terminal-single-page .workspace-chart .instrument-title {gap:7px}
+.terminal-single-page .workspace-chart .instrument-title .instrument-art {--instrument-size:26px}
+.terminal-single-page .workspace-chart .instrument-title h1 {font-size:16px;white-space:nowrap}
+.terminal-single-page .workspace-chart .instrument-title p {font-size:10px}
+.terminal-single-page .workspace-chart .instrument-quote {display:none}
+.terminal-single-page .workspace-chart .rsi-pane {height:54px}
+.terminal-single-page .workspace-chart:has(.rsi-pane.is-visible) .interactive-chart-plot {min-height:60px}
+.terminal-single-page .workspace-chart .instrument-class {font-size:9px;margin-left:5px}
+.terminal-single-page .workspace-chart .chart-order-actions {display:flex;align-items:center;gap:6px;padding:5px 8px;flex-shrink:0;flex-basis:auto}
+.terminal-single-page .workspace-chart .chart-order-start {min-width:88px;min-height:40px;padding:5px 8px;display:flex;flex-direction:column;align-items:flex-start;gap:1px}
+.terminal-single-page .workspace-chart .chart-order-start span {font-size:10px}
+.terminal-single-page .workspace-chart .chart-order-start strong {font-size:14px;letter-spacing:0}
+.terminal-single-page .workspace-chart .chart-workflow-tools {flex-basis:100%;padding:4px 10px}
+.chart-pick-prompt {display:flex;align-items:center;gap:8px;flex-basis:100%;padding:7px 10px;font-size:11px;background:var(--mm-surface-2)}
+.chart-pick-prompt svg {width:15px;height:15px;flex-shrink:0}.chart-pick-prompt button {margin-left:auto;min-width:28px;min-height:28px}
+.terminal-single-page .workspace-chart .chart-toolbar {min-height:34px;padding:1px 8px;flex-wrap:nowrap;gap:6px}
+.terminal-single-page .workspace-chart .timeframes {min-width:0;flex:1;overflow-x:auto;justify-content:flex-start;scrollbar-width:thin}
+.terminal-single-page .workspace-chart .timeframes button {height:30px;min-width:30px;flex-shrink:0}
+.terminal-single-page .workspace-chart .chart-controls {width:auto;flex-shrink:0;margin-left:auto;gap:2px}
+.terminal-single-page .workspace-chart .chart-controls .icon-button {width:28px;height:30px}
+.compact-timeframe {display:none;flex-direction:row;align-items:center;white-space:nowrap;gap:6px;font-size:11px;color:var(--mm-ink-2)}
+.compact-timeframe select {height:28px;min-height:28px;min-width:58px;width:auto;border:1px solid var(--mm-hairline);border-radius:5px;background:var(--mm-surface);padding:3px 6px;color:var(--mm-ink);font-size:12px}
+.terminal-single-page .workspace-chart .position-dock {padding:3px 8px;flex-shrink:0}
+.terminal-single-page .workspace-chart .position-dock-summary {flex-wrap:nowrap;gap:8px;min-height:34px}
+.terminal-single-page .workspace-chart .position-dock-summary select {min-width:0;max-width:230px;min-height:30px;font-size:11px;flex:1}
+.terminal-single-page .workspace-chart .position-live-pnl {font-size:12px}
+.terminal-single-page .workspace-chart .position-entry-price {font-size:10px}
+.terminal-single-page .workspace-chart .interactive-chart-caption {min-height:22px;padding:3px 8px;font-size:9px;gap:4px 8px;flex-wrap:nowrap;flex-shrink:0;overflow:hidden}
+.terminal-single-page .workspace-chart .interactive-chart-caption .text-button {font-size:10px;white-space:nowrap}
+.terminal-single-page .workspace-chart .interactive-chart-caption>span:last-child {display:none}
+.terminal-single-page .trade-marker {opacity:1;font-size:11px;min-height:28px;gap:6px;padding:4px 7px;background:var(--mm-surface);box-shadow:0 1px 4px #0001}
+.terminal-single-page .trade-marker.is-secondary {opacity:1;color:var(--mm-ink);background:var(--mm-surface);border-color:var(--mm-line-strong)}
+.terminal-single-page .trade-marker.is-secondary .marker-pnl {display:inline}
+.terminal-single-page .trade-marker.is-position {border-style:solid}
+.terminal-single-page .trade-marker.is-pending {border-style:dashed;border-color:#b1832b}
+.terminal-single-page .trade-marker .pending-label {display:inline;color:var(--mm-warn);font-size:10px}
+.terminal-single-page .trade-marker .marker-volume {font-size:10px}
+.terminal-single-page .workspace-activity .activity-heading {min-height:40px;padding:3px 8px;gap:5px;flex-wrap:nowrap}
+.terminal-single-page .workspace-activity .activity-tabs {gap:3px;min-width:0;overflow-x:auto;align-self:center}
+.terminal-single-page .workspace-activity .activity-tabs button {padding:5px 9px;min-height:32px;font-size:12px;white-space:nowrap}
+.terminal-single-page .workspace-activity .activity-query-bar {padding:5px 10px;gap:8px;flex-wrap:nowrap}
+.terminal-single-page .workspace-activity .activity-search {width:220px;min-width:120px}
+.terminal-single-page .workspace-activity .activity-search input {height:28px;font-size:11px}
+.terminal-single-page .workspace-activity .orders-table th {padding:6px 10px;font-size:10px;white-space:nowrap}
+.terminal-single-page .workspace-activity .orders-table td {padding:5px 10px;font-size:12px;height:40px}
+.terminal-single-page .workspace-activity .orders-table td small {font-size:10px}
+.terminal-single-page .workspace-activity .orders-table .row-manage .icon-button {min-height:28px;height:28px;font-size:10px;padding:4px 6px}
+.terminal-single-page .workspace-activity .activity-summary {padding:8px 12px;gap:24px}
+.terminal-single-page .workspace-activity .activity-summary strong {font-size:16px}
+.terminal-single-page .workspace-activity .trade-inspector {width:280px;padding-inline:12px}
+.terminal-single-page .desktop-account-summary {padding:6px 14px;min-height:48px;border-top:1px solid var(--mm-hairline);border-bottom:0;gap:12px}
+.terminal-single-page .desktop-account-summary dl {display:flex;gap:0;overflow:visible}
+.terminal-single-page .desktop-account-summary dl>div,.terminal-single-page .desktop-account-summary dl>div:first-child {padding:0 14px;flex:1;border:0;min-width:0}
+.terminal-single-page .desktop-account-summary dl>div:first-child {padding-left:0}
+.terminal-single-page .desktop-account-summary dt {font-size:10px}
+.terminal-single-page .desktop-account-summary dt span {font-size:9px}
+.terminal-single-page .desktop-account-summary dd,.terminal-single-page .desktop-account-summary dl>div:first-child dd {font-size:14px;margin-top:2px;line-height:1.3;letter-spacing:0}
+.account-figures-toggle {display:none;flex-shrink:0;width:30px;min-height:32px;border:1px solid var(--mm-hairline);border-radius:5px;align-items:center;justify-content:center}
+.account-figures-toggle svg {width:15px;height:15px}
+.desktop-account-summary[data-expanded="true"] .account-figures-toggle svg {transform:rotate(180deg)}
+.terminal-single-page .desktop-footer {min-height:22px;padding:3px 14px;font-size:9px}
+.terminal-single-page .order-receipt {margin:4px 8px 0;padding:8px 12px}
+.instrument-spec-dialog {width:min(420px,calc(100vw - 24px))}
+.instrument-spec-dialog .dialog-body {padding:0}
+.instrument-spec-dialog .instrument-details {border:0;border-radius:0;max-height:none;display:flex;padding:20px;background:var(--mm-surface)}
+.ticket-fields {border:0;margin:0;min-inline-size:0}
+.ticket-direction-hint {font-size:10px;line-height:1.5;margin:7px 0 0;color:var(--mm-ink-2)}
+.ticket-market-actions {display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ticket-market-actions>div {min-width:0}
+.terminal-single-page .ticket-market-actions .place-order {display:flex;flex-direction:column;justify-content:center;gap:3px;width:100%;min-height:60px;padding:8px}
+.ticket-market-actions .place-order strong {font-size:15px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.ticket-market-actions small {display:block;font-size:10px;line-height:1.5;margin-top:6px;color:var(--mm-ink-2)}
+.ticket-submit-hint {font-size:10px;line-height:1.5;margin:8px 0 0;color:var(--mm-ink-2);text-align:center}
+.ticket-error {margin:0 0 12px;outline-offset:3px}
+.ticket-result {flex:1;min-height:0;overflow:auto;padding:8px 16px 20px;overscroll-behavior:contain}
+.ticket-result-state {padding:16px 0 20px}
+.ticket-result-state>svg {width:30px;height:30px;margin-bottom:12px;color:var(--mm-ink-2)}
+.ticket-result.is-confirmed .ticket-result-state>svg {color:var(--mm-pos)}
+.ticket-result.is-problem .ticket-result-state>svg {color:var(--mm-neg)}
+.ticket-result-state h3 {font-size:18px;font-weight:600;line-height:1.4;margin-bottom:8px;outline-offset:3px}
+.ticket-result-state p {color:var(--mm-ink-2);font-size:12px;line-height:1.6;overflow-wrap:anywhere}
+.ticket-result .detail-list {font-size:12px;margin-bottom:20px}
+.ticket-result .detail-list dd {text-align:right;overflow-wrap:anywhere}
+.ticket-result-actions {display:flex;flex-direction:column;gap:9px}
+.ticket-result-actions .button {min-height:40px;font-size:12px}
+.ticket-result-actions .text-button {justify-content:center;margin-top:7px;min-height:36px}
+.ticket-result-actions svg {width:15px;height:15px}
+.management-form {display:flex;flex-direction:column;flex:1;min-height:0}
+.terminal-single-page .workspace-ticket {flex-direction:column;gap:8px}
+.terminal-single-page .workspace-ticket>.panel {flex:1;height:auto}
+.ticket-visibility-control {display:flex;justify-content:flex-end;flex-shrink:0}
+.ticket-visibility-control button {min-height:28px;font-size:12px;gap:6px}
+.ticket-visibility-control svg {width:16px;height:16px}
+.management-ticket .panel-heading h2 {outline-offset:3px}
+.management-quote {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;padding:12px 0;margin-bottom:14px;border-bottom:1px solid var(--mm-hairline)}
+.management-quote span,.management-quote small {font-size:11px;color:var(--mm-ink-2)}
+.management-quote strong {font-size:18px;font-variant-numeric:tabular-nums}
+.management-quote small {flex-basis:100%}
+.management-price-field {display:flex;flex-direction:column;gap:7px;font-size:12px;margin-bottom:15px}
+.management-price-field input,.management-ticket .risk-fields input,.management-volume {width:100%;min-width:0;height:42px;border:1px solid var(--mm-line);background:var(--mm-surface-2);border-radius:6px;padding:8px;color:var(--mm-ink)}
+.management-ticket .risk-fields {margin-bottom:12px}
+.management-ticket .risk-fields small {color:var(--mm-ink-2);font-size:11px}
+.management-ticket .helper {font-size:11px;line-height:1.6;margin:10px 0;color:var(--mm-ink-2)}
+.management-close-summary,.management-changes {font-size:12px;margin-top:18px}
+.management-changes dd {text-align:right;overflow-wrap:anywhere}
+.management-changes del {color:var(--mm-ink-2)}
+.management-back {display:block;margin:10px auto 0;font-size:11px;min-height:30px}
+.management-pending-strip {padding:9px 14px;background:var(--mm-surface-2);border:1px solid var(--mm-line);border-radius:6px;font-size:11px;display:flex;gap:10px;align-items:center;flex-shrink:0}
+.position-level-actions {display:flex;align-items:center;flex-wrap:wrap;gap:7px;padding:8px 12px;border-top:1px solid var(--mm-hairline)}
+.position-level-actions button {display:flex;align-items:center;gap:6px;min-height:32px;padding:5px 9px;font-size:11px;border:1px solid var(--mm-line);border-radius:5px;background:var(--mm-surface)}
+.position-level-actions svg {width:12px;height:12px}
+.position-level-actions>span {font-size:10px;color:var(--mm-ink-2);margin-left:auto}
+.toolbar-menu {position:relative;flex-shrink:0;z-index:12}
+.toolbar-menu[open] {z-index:30}
+.toolbar-menu summary {display:flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:8px 10px;border:1px solid var(--mm-line);border-radius:7px;background:var(--mm-surface);color:var(--mm-ink);font-size:12px;cursor:pointer;list-style:none;white-space:nowrap}
+.toolbar-menu summary::-webkit-details-marker {display:none}
+.toolbar-menu summary:focus-visible {outline:2px solid var(--mm-accent);outline-offset:2px}
+.toolbar-menu svg {width:17px;height:17px;flex-shrink:0}
+.toolbar-menu-content {position:absolute;right:0;top:calc(100% + 6px);width:230px;max-width:calc(100vw - 32px);padding:6px;border:1px solid var(--mm-line);border-radius:9px;box-shadow:0 8px 28px #0002;background:var(--mm-surface);color:var(--mm-ink)}
+.toolbar-menu-content button {width:100%;display:flex;align-items:center;gap:9px;padding:10px;min-height:44px;border-radius:5px;text-align:left;font-size:12px;background:transparent}
+.toolbar-menu-content button:hover,.toolbar-menu-content button:focus-visible {background:var(--mm-surface-2)}
+.toolbar-menu-content button strong {margin-left:auto;font-variant-numeric:tabular-nums}
+.workspace-more summary>span,.chart-entry-menu summary>span {display:none}
+.workspace-more summary,.chart-entry-menu summary {width:44px;min-height:44px;padding:8px}
+.chart-entry-menu {align-self:center}
+.position-manage-menu .toolbar-menu-content {top:auto;bottom:calc(100% + 8px)}
+
+/* Ticket fields scroll independently; submit buttons remain in sight. */
+.terminal-single-page .workspace-ticket {gap:0;overflow:hidden;border:1px solid var(--mm-hairline);border-radius:10px;background:var(--mm-surface)}
+.terminal-single-page .workspace-ticket>.panel {border:0;border-radius:0;overflow:hidden;min-height:0;flex:1;height:auto}
+.ticket-visibility-control {padding:3px 9px;border-bottom:1px solid var(--mm-line-soft);min-height:28px}
+.ticket-visibility-control button {min-height:24px;font-size:10px}
+.ticket-visibility-control svg {width:13px;height:13px}
+.terminal-single-page .workspace-ticket .panel-heading {padding:8px 12px 5px}
+.terminal-single-page .workspace-ticket .panel-heading h2 {font-size:15px}
+.terminal-single-page .workspace-ticket .ticket-instrument-heading {padding:5px 12px;margin:0 0 8px;font-size:11px;min-height:30px;flex-shrink:0}
+.terminal-single-page .workspace-ticket .ticket-instrument-heading>span:last-child {flex-basis:auto;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}
+.terminal-single-page .workspace-ticket .ticket-instrument-heading strong {font-size:13px}
+.terminal-single-page .workspace-ticket .ticket-instrument-heading .instrument-art {--instrument-size:24px}
+.terminal-single-page .workspace-ticket .order-scroll {padding:0 12px 12px;overflow:auto;flex:1;min-height:0}
+.ticket-order-kind {display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--mm-ink-2)}
+.ticket-order-kind select {width:100%;height:36px;background:var(--mm-surface-2);color:var(--mm-ink);border:1px solid var(--mm-hairline);border-radius:6px;padding:5px 8px;font-size:12px}
+.terminal-single-page .workspace-ticket .field-label {margin:14px 0 6px;font-size:12px}
+.terminal-single-page .workspace-ticket .volume-control {height:44px;margin:0}
+.terminal-single-page .workspace-ticket .volume-control input {height:42px;min-width:0;font-size:20px}
+.terminal-single-page .workspace-ticket .volume-control button {width:42px;height:42px;flex-shrink:0}
+.terminal-single-page .workspace-ticket .volume-presets {gap:6px;margin-top:8px}
+.terminal-single-page .workspace-ticket .volume-presets button {min-height:30px;font-size:11px}
+.terminal-single-page .workspace-ticket .volume-limits {font-size:10px}
+.terminal-single-page .workspace-ticket .risk-heading {margin-top:16px;padding-top:12px}
+.terminal-single-page .workspace-ticket .risk-fields input {min-height:36px;font-size:13px}
+.terminal-single-page .workspace-ticket .order-bottom {padding:10px 12px;flex:none}
+.terminal-single-page .workspace-ticket .ticket-market-actions {gap:8px}
+.terminal-single-page .workspace-ticket .ticket-market-actions .place-order {min-height:54px;font-size:12px;gap:3px}
+.terminal-single-page .workspace-ticket .ticket-market-actions .place-order strong {font-size:16px}
+.ticket-extra {margin-top:14px;border-top:1px solid var(--mm-hairline);padding-top:4px}
+.ticket-extra>summary {cursor:pointer;font-size:11px;min-height:32px;align-content:center;color:var(--mm-ink-2)}
+.risk-direction {margin-bottom:12px}
+.ticket-confirmed-inline {padding:8px 10px;border:1px solid color-mix(in srgb,var(--mm-pos) 30%,transparent);border-radius:6px;background:var(--mm-pos-soft);margin-bottom:12px;display:flex;flex-direction:column;gap:3px;font-size:11px}
+.ticket-confirmed-inline strong {color:var(--mm-pos);font-weight:600}.ticket-confirmed-inline span {color:var(--mm-ink-2);font-size:10px}
+.terminal-single-page .toolbar-menu summary {min-height:30px;padding:5px 7px;font-size:11px;border-color:var(--mm-hairline)}
+.terminal-single-page .toolbar-menu svg {width:15px;height:15px}
+.terminal-single-page .workspace-more summary,.terminal-single-page .chart-entry-menu summary {width:30px;min-height:32px}
+.terminal-single-page .toolbar-menu-content button {min-height:36px}
+/* A decorative loading skeleton appears only while real candle history is loading. */
+.chart-loading {position:absolute;inset:0;z-index:15;display:grid;place-items:center;background:var(--chart-bg,var(--mm-surface));pointer-events:none}
+.chart-loading-bars {position:absolute;inset:24% 9% 18%;display:flex;align-items:center;justify-content:space-around;gap:3%;opacity:.3}
+.chart-loading-bars i {display:block;flex:1;max-width:14px;border-radius:2px;background:var(--mm-line-strong);animation:chart-skeleton 1.5s ease-in-out infinite}
+.chart-loading-copy {z-index:1;display:flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--mm-hairline);border-radius:7px;background:var(--mm-surface);font-size:12px}
+.chart-loading-copy>span:last-child {color:var(--mm-ink-2);font-size:11px}
+.chart-loading-spinner {width:14px;height:14px;border:2px solid var(--mm-hairline);border-top-color:var(--mm-ink-2);border-radius:50%;animation:chart-spin .8s linear infinite}
+@keyframes chart-skeleton {0%,100%{opacity:.35;transform:scaleY(.8)}50%{opacity:.85;transform:scaleY(1)}}
+@keyframes chart-spin {to{transform:rotate(360deg)}}
+@media(min-width:1180px) {
+ .unified-workspace[data-ticket-open="true"] {--activity-end:-2;grid-template-columns:var(--watch-width) minmax(0,1fr) var(--order-width)}
+ .unified-workspace[data-ticket-open="true"][data-markets-open="false"] {grid-template-columns:minmax(0,1fr) var(--order-width)}
+}
+@media(min-width:1700px) {.unified-workspace{--watch-width:280px;--order-width:320px;column-gap:10px}}
+@media(max-width:1399px) {
+ .terminal-single-page .terminal-search {width:32px;padding:0;justify-content:center;background:transparent;border:0}
+ .terminal-single-page .terminal-search :is(span,kbd) {display:none}
+ .terminal-single-page .header-help,.terminal-single-page .header-sound {display:none}
+ .terminal-single-page .workspace-activity .activity-filter span {display:none}
+}
+@media(min-width:760px) and (max-width:1179px) {
+ .unified-workspace {--watch-width:238px}
+ .unified-workspace .workspace-ticket[data-floating="true"] {position:absolute;z-index:40;top:8px;right:8px;bottom:8px;width:310px;max-width:calc(100% - 16px);box-shadow:-8px 0 28px #0002}
+ .terminal-single-page .desktop-account-summary dl>div {padding-inline:8px}
+ .terminal-single-page .workspace-activity .activity-body.is-inspecting>.activity-content {display:none}
+ .terminal-single-page .workspace-activity .trade-inspector {width:100%}
+}
+@container chart (max-width:900px) {
+ .terminal-single-page .workspace-chart .timeframes {display:none}
+ .terminal-single-page .workspace-chart .compact-timeframe {display:flex}
+}
+@container chart (max-width:650px) {
+ .terminal-single-page .workspace-chart .instrument-class,.terminal-single-page .workspace-chart .alert-shortcut,.terminal-single-page .workspace-chart .position-entry-price {display:none}
+ .terminal-single-page .workspace-chart .chart-order-start {min-width:76px}
+ .terminal-single-page .workspace-chart .chart-capture {display:none}
+}
+@container chart (max-width:460px) {
+ .terminal-single-page .workspace-chart .instrument-heading {flex-basis:100%;min-height:40px}
+ .terminal-single-page .workspace-chart .chart-order-actions {padding-top:0;width:100%}
+ .terminal-single-page .workspace-chart .chart-order-start {flex:1;flex-direction:row;align-items:center;justify-content:space-between;min-height:36px}
+ .terminal-single-page .workspace-chart .chart-order-start strong {font-size:13px}
+ .terminal-single-page .workspace-chart .compact-timeframe>span,.terminal-single-page .workspace-chart .position-direction {display:none}
+}
+@media(max-width:959px) {
+ .terminal-single-page .terminal-header {gap:6px}
+ .terminal-single-page .terminal-identity>span {display:none}
+ .terminal-single-page .desktop-account-summary dl>div {padding-inline:7px}
+ .terminal-single-page .desktop-account-summary dt span {display:none}
+}
+@media(max-width:759px) {
+ .terminal-single-page .terminal-header {height:auto;min-height:88px;flex-wrap:wrap;padding:4px 8px;gap:4px 6px}
+ .terminal-single-page .desktop-heading {order:3;flex-basis:100%;justify-content:space-between;min-height:34px}
+ .terminal-single-page .desktop-heading .button {min-height:34px}
+ .terminal-single-page .header-actions {margin-left:auto}
+ .terminal-single-page .account-selector {min-width:150px}
+ .unified-workspace {display:flex;flex-direction:column;gap:8px;padding:8px;overflow:auto}
+ .unified-workspace>section {flex-shrink:0;width:100%}
+ .unified-workspace .workspace-chart {order:1;height:clamp(360px,62dvh,520px)}
+ .unified-workspace .workspace-activity {order:2;height:300px}
+ .unified-workspace .workspace-watchlist {order:3;height:340px}
+ .unified-workspace[data-activity-expanded="false"] .workspace-activity {height:42px}
+ .unified-workspace>.activity-divider {display:none}
+ .unified-workspace .workspace-ticket[data-floating="true"] {position:fixed;z-index:40;top:auto;right:8px;left:8px;bottom:8px;width:auto;height:min(620px,85dvh);box-shadow:0 -8px 36px #0003}
+ .terminal-single-page .workspace-chart .interactive-chart-plot {min-height:120px}
+ .terminal-single-page .workspace-activity .activity-heading {flex-wrap:wrap;min-height:40px}
+ .terminal-single-page .workspace-activity .activity-tabs {min-height:32px;gap:1px}
+ .terminal-single-page .workspace-activity .activity-tabs button {padding-inline:6px;font-size:11px}
+ .terminal-single-page .workspace-activity .activity-query-bar {flex-wrap:wrap}
+ .terminal-single-page .workspace-activity .activity-search {width:100%}
+ .terminal-single-page .workspace-activity .orders-table td {padding:0;height:auto}
+ .terminal-single-page .workspace-activity .orders-table .row-manage .icon-button {min-height:36px}
+ .terminal-single-page .workspace-watchlist .market-name small {max-width:180px}
+ .terminal-single-page .workspace-watchlist .market-price strong,.terminal-single-page .workspace-watchlist .market-price small {min-width:90px}
+ .terminal-single-page .desktop-account-summary {min-height:44px;padding:6px 10px}
+ .terminal-single-page .desktop-account-summary dl {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+ .terminal-single-page .desktop-account-summary dl>div,.terminal-single-page .desktop-account-summary dl>div:first-child {padding:0}
+ .terminal-single-page .desktop-account-summary[data-expanded="false"] .figure-secondary {display:none}
+ .terminal-single-page .desktop-account-summary dd,.terminal-single-page .desktop-account-summary dl>div:first-child dd {font-size:12px}
+ .terminal-single-page .account-figures-toggle {display:flex}
+ .terminal-single-page .desktop-footer {padding-inline:10px}
+}
+@media(max-height:610px) and (min-width:760px) {
+ /* On unusually short windows keep usable panel minima and allow workspace scrolling. */
+ .unified-workspace {overflow:auto;grid-template-rows:minmax(292px,1fr) 8px var(--dock-height)}
+}
+.terminal-single-page.desktop-chart-focused .unified-workspace {display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+.terminal-single-page.desktop-chart-focused .unified-workspace>:is(.workspace-watchlist,.workspace-ticket,.workspace-activity,.activity-divider) {display:none}
+.terminal-single-page.desktop-chart-focused .workspace-chart {grid-row:1;grid-column:1;height:auto}
+@media(pointer:coarse) {
+ .terminal-single-page .workspace-watchlist .row-action {min-width:36px;min-height:44px}
+ .terminal-single-page .toolbar-menu summary,.terminal-single-page .desktop-heading .button,.compact-timeframe select {min-height:40px}
+ .terminal-single-page .workspace-ticket .volume-presets button {min-height:40px}
+}
+@media(prefers-reduced-motion:reduce) {.chart-loading-bars i,.chart-loading-spinner{animation:none}}
+
+/* Compact desktop density keeps canvas coordinates at native scale. */
+.market-filter-controls {display:flex;align-items:center;gap:6px;padding:6px 8px;flex-shrink:0}
+.market-filter-controls select {height:30px;min-height:30px;min-width:0;flex:1;padding:4px 6px;border-radius:5px;font-size:11px}
+.watchlist-favorites-filter {display:flex;align-items:center;gap:4px;padding:5px 7px;border:1px solid var(--mm-hairline);border-radius:5px;min-height:30px;font-size:11px;white-space:nowrap}
+.watchlist-favorites-filter svg {width:13px;height:13px}
+.watchlist-favorites-filter[aria-pressed="true"] {background:var(--accent-wash);color:var(--accent-ink);border-color:var(--accent-ink)}
+.watchlist-favorites-filter[aria-pressed="true"] svg {fill:currentColor}
+.watchlist-saved {display:grid;place-items:center;min-width:28px;color:var(--mm-pos)}
+.market-row.is-revealed {box-shadow:inset 2px 0 var(--accent-ink);background:var(--accent-wash)}
+.density-preference {display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:16px}
+.density-preference select {width:150px}
+.ticket-heading-symbol {font-size:13px;color:var(--mm-ink-2);font-weight:500}
+.terminal-single-page .workspace-ticket .panel-heading>div {width:100%}
+.terminal-single-page .workspace-ticket .panel-heading h2 {justify-content:space-between}
+.terminal-single-page .workspace-ticket .ticket-mode {margin:4px 0 0;font-size:10px}
+.terminal-single-page .ticket-market-actions small:empty {display:none}
+.terminal-single-page .workspace-ticket .pending-fields {margin:12px 0;gap:6px}
+.terminal-single-page .workspace-ticket .ticket-chart-pick {min-height:28px;font-size:11px;justify-content:flex-start}
+.terminal-single-page .workspace-ticket .pending-type {font-size:11px;line-height:1.45;margin:0}
+@media(min-width:760px) and (pointer:fine) {
+ .terminal-single-page[data-density="compact"] .terminal-header {height:46px;min-height:46px;gap:8px}
+ .terminal-single-page[data-density="compact"] .unified-workspace {--watch-width:238px;--order-width:280px;padding:6px;column-gap:6px}
+ .terminal-single-page[data-density="compact"] .account-selector {min-height:36px;padding:3px 8px}
+ .terminal-single-page[data-density="compact"] .workspace-watchlist .panel-heading {padding:4px 8px}
+ .terminal-single-page[data-density="compact"] .workspace-watchlist .market-row {min-height:44px}
+ .terminal-single-page[data-density="compact"] .workspace-watchlist .market-select {min-height:44px;padding:4px 3px;gap:5px}
+ .terminal-single-page[data-density="compact"] .workspace-watchlist .market-name small {font-size:10px;max-width:88px;margin-top:0}
+ .terminal-single-page[data-density="compact"] .workspace-watchlist .instrument-art {--instrument-size:22px}
+ .terminal-single-page[data-density="compact"] .workspace-watchlist .market-price strong,.terminal-single-page[data-density="compact"] .workspace-watchlist .market-price small {font-size:11px;min-width:74px;gap:4px}
+ .terminal-single-page[data-density="compact"] .workspace-watchlist .market-price span {font-size:9px}
+ .terminal-single-page[data-density="compact"] .workspace-chart .instrument-heading {min-height:44px;padding:4px 8px}
+ .terminal-single-page[data-density="compact"] .workspace-chart .instrument-title h1 {font-size:15px}
+ .terminal-single-page[data-density="compact"] .workspace-chart .instrument-title .instrument-art {--instrument-size:22px}
+ .terminal-single-page[data-density="compact"] .workspace-chart .chart-order-actions {padding-block:3px}
+ .terminal-single-page[data-density="compact"] .workspace-chart .chart-order-start {min-height:36px;min-width:82px;padding:3px 7px}
+ .terminal-single-page[data-density="compact"] .workspace-chart .chart-order-start strong {font-size:13px}
+ .terminal-single-page[data-density="compact"] .workspace-chart .chart-toolbar {min-height:32px}
+ .terminal-single-page[data-density="compact"] .workspace-chart .position-dock-summary {min-height:30px}
+ .terminal-single-page[data-density="compact"] .workspace-chart .position-dock-summary select {height:28px;min-height:28px}
+ .terminal-single-page[data-density="compact"] .workspace-ticket .panel-heading {padding:7px 10px}
+ .terminal-single-page[data-density="compact"] .workspace-ticket .order-scroll {padding:0 10px 10px}
+ .terminal-single-page[data-density="compact"] .workspace-ticket .ticket-order-kind {gap:4px}
+ .terminal-single-page[data-density="compact"] .workspace-ticket .ticket-order-kind select {height:32px;font-size:12px}
+ .terminal-single-page[data-density="compact"] .workspace-ticket .field-label {margin:10px 0 5px}
+ .terminal-single-page[data-density="compact"] .workspace-ticket .volume-control {height:38px}
+ .terminal-single-page[data-density="compact"] .workspace-ticket .volume-control input {height:36px;font-size:18px}
+ .terminal-single-page[data-density="compact"] .workspace-ticket .volume-control button {height:36px;width:36px}
+ .terminal-single-page[data-density="compact"] .workspace-ticket .volume-presets {margin-top:6px;gap:5px}
+ .terminal-single-page[data-density="compact"] .workspace-ticket .volume-presets button {min-height:28px;padding:3px 0}
+ .terminal-single-page[data-density="compact"] .workspace-ticket .risk-heading {margin-top:12px;padding-top:10px}
+ .terminal-single-page[data-density="compact"] .workspace-ticket .risk-fields {margin-top:8px;gap:8px}
+ .terminal-single-page[data-density="compact"] .workspace-ticket .risk-fields input,.terminal-single-page[data-density="compact"] .workspace-ticket .pending-fields input {height:34px;min-height:34px;padding:5px 8px;font-size:12px}
+ .terminal-single-page[data-density="compact"] .workspace-ticket .order-bottom {padding:8px 10px}
+ .terminal-single-page[data-density="compact"] .workspace-ticket .ticket-market-actions .place-order {min-height:46px;font-size:12px}
+ .terminal-single-page[data-density="compact"] .workspace-ticket .ticket-market-actions .place-order strong {font-size:14px}
+ .terminal-single-page[data-density="compact"] .workspace-ticket .place-order {min-height:40px;font-size:12px}
+ .terminal-single-page[data-density="compact"] .workspace-activity .activity-heading {min-height:36px;padding:2px 8px}
+ .terminal-single-page[data-density="compact"] .workspace-activity .activity-tabs button {min-height:30px;padding:4px 8px}
+ .terminal-single-page[data-density="compact"] .workspace-activity .orders-table td {height:36px;padding:4px 10px}
+ .terminal-single-page[data-density="compact"] .desktop-account-summary {min-height:42px;padding-block:4px}
+ .terminal-single-page[data-density="compact"] .desktop-account-summary dd,.terminal-single-page[data-density="compact"] .desktop-account-summary dl>div:first-child dd {font-size:13px}
+}

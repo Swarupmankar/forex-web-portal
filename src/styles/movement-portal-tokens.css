@@ -1,0 +1,267 @@
+/* Canonical Movement Markets wordmark: Montserrat 700 / 300, hosted locally. */
+@font-face{font-family:'Movement Wordmark';font-style:normal;font-weight:100 900;font-display:swap;src:url('/fonts/montserrat-latin.woff2') format('woff2')}
+/* ===========================================================================
+   Movement Markets — design tokens
+   ---------------------------------------------------------------------------
+   The single source of truth for the brand. Everything else in this folder,
+   and everything in the portals, reads these and nothing else.
+
+   Three layers, in order:
+
+     1. PRIMITIVES  --mm-<name>-h       raw brand values. Theme-independent.
+                                        Named for what they ARE (lime, ink).
+     2. SEMANTIC    --mm-<role>         what a value is FOR (bg, surface, ink).
+                                        Re-pointed per theme; this is the layer
+                                        product code should use.
+     3. ADAPTER     see shadcn-theme.css — maps layer 2 onto the variable names
+                                        shadcn/ui already consumes.
+
+   Colours are stored twice on purpose:
+
+     --mm-x-h   an unwrapped HSL triplet  "76 100% 47%"
+     --mm-x     the usable colour         hsl(var(--mm-x-h))
+
+   The triplet is what Tailwind and shadcn need — they write `hsl(var(--x))`
+   themselves, and the unwrapped form is the only way to get `hsl(var(--x) / .4)`
+   alpha out of a single token. The wrapped form is for plain CSS.
+   =========================================================================== */
+
+:root {
+  /* ---- 1. PRIMITIVES ---------------------------------------------------- */
+
+  /* The accent. One colour carries the whole brand, so it gets exact names. */
+  --mm-lime-h:        76 100% 47%;   /* #b0f000  the signature */
+  --mm-lime-deep-h:   76 100% 38%;   /* #8fc400  pressed / hover on dark */
+  --mm-lime-soft-h:   79 100% 85%;   /* #e6ffb0  lime text on dark chrome */
+  --mm-lime-ink-h:    75  90% 25%;   /* #5c7906  lime as TEXT on light — see note */
+
+  /* Neutrals. The dark ramp matches the landing page exactly: neutral black,
+     charcoal panels and grayscale text. Light mode retains its existing ramp. */
+  --mm-black-h: 0 0% 4.705882%;   /* #0c0c0c site background */
+  --mm-ink-h:        216  14%  7%;   /* #0f1114  primary text on light */
+  --mm-slate-h:      215   9% 40%;   /* #5d6570  secondary text */
+  --mm-slate-lo-h:   215   9% 45%;   /* #68717d  secondary text, AA at 12px */
+  --mm-faint-h:      215   8% 43%;   /* #8b929c  decorative only — 3.1:1 */
+  --mm-line-h:       220  26% 91%;   /* #e2e6ee  hairlines on light */
+  --mm-paper-h:        0   0% 100%;  /* #ffffff  cards */
+  --mm-mist-h: 210.000000 28.571429% 97.254902%; /* #f6f8fa shared with the partner portal */
+  --mm-canvas-h: 216.000000 26.315789% 96.274510%; /* #f3f5f8 shared with the partner portal */
+
+  /* Dark ramp */
+  --mm-d-surface-h: 0 0% 10.980392%;   /* #1c1c1c landing-page cards */
+  --mm-d-surface2-h: 0 0% 8.627451%;   /* #161616 inset surfaces */
+  --mm-d-line-h: 0 0% 14.901961%;   /* #262626 */
+  --mm-d-ink-h: 0 0% 95.686275%;   /* #f4f4f4 */
+  --mm-d-slate-h: 0 0% 69.019608%;   /* #b0b0b0 */
+  --mm-d-faint-h: 0 0% 54.117647%;   /* #8a8a8a secondary labels */
+
+  /* Market direction. Two pairs — the light values are darkened from the
+     site's, which were drawn for 30px stat figures and fail at 12px. */
+  --mm-up-h:         146  67% 30%;   /* #198046  light */
+  --mm-down-h:         0  64% 52%;   /* #d33636  light */
+  --mm-d-up-h:       137  65% 66%;   /* #6fe08f  dark */
+  --mm-d-down-h:       0 100% 74%;   /* #ff7b7b  dark */
+  /* The one extension. Every other colour here is on movementmarkets.com or a
+     darkened step of one; the site has no amber at all, because a marketing
+     site has no pending states. A portal does — a withdrawal under review, a
+     KYC document waiting — and neutral grey under-reports them.
+
+     Hue 32 rather than the usual 38: at 38 it sits 38 degrees from the brand
+     lime and a small amber badge can read as a dim lime one. At 32 it is
+     unmistakably orange, and clear of the up-green at 146 and the down-red at
+     0 — the four status colours separate at ΔE 26 to normal vision.
+
+     Two values, like lime: a fill with the ink label on it, and a darkened
+     step for when amber has to BE the text. */
+  --mm-warn-h:        32  92% 50%;   /* #f5870a  badge fill, ink on it 7.5:1 */
+  --mm-warn-ink-h:    32  92% 34%;   /* #a65c07  amber as text     4.7:1 */
+  --mm-d-warn-h:      32  92% 62%;   /* #f7a445  both jobs on dark 6.7:1+ */
+
+  /* ---- Type ------------------------------------------------------------- */
+  --mm-font-display: 'Space Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --mm-font-body:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --mm-font-mono:    ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* The site's type is tight and gets tighter as it gets bigger. These are the
+     measured values off the live pages, not a generated scale. */
+  --mm-text-eyebrow:  11.5px;  --mm-tracking-eyebrow: .1em;
+  --mm-text-micro:    12.5px;
+  --mm-text-sm:       13.5px;
+  --mm-text-base:     14.5px;
+  --mm-text-md:         16px;
+  --mm-text-lead:       17px;
+  --mm-text-h3:         20px;  --mm-tracking-h3:  -.02em;
+  --mm-text-h2:  clamp(28px, 3.2vw, 40px);  --mm-tracking-h2: -.03em;
+  --mm-text-h1:  clamp(38px,   5vw, 62px);  --mm-tracking-h1: -.035em;
+  --mm-text-stat:       30px;  --mm-tracking-stat: -.03em;
+
+  --mm-leading-tight: 1.1;
+  --mm-leading-body:  1.6;
+  --mm-leading-prose: 1.7;
+
+  /* ---- Shape ------------------------------------------------------------ */
+  --mm-radius-pill:  999px;   /* every button and filter chip on the site */
+  --mm-radius-panel:  22px;
+  --mm-radius-card:   20px;
+  --mm-radius-well:   18px;   /* table wrappers, stat tiles */
+  --mm-radius-field:  10px;   /* inputs */
+  --mm-radius-chip:   10px;
+
+  /* ---- Space ------------------------------------------------------------ */
+  --mm-gap-tight:   8px;
+  --mm-gap:        16px;
+  --mm-gap-loose:  24px;
+  --mm-pad-card:   26px 24px 24px;
+  --mm-pad-panel:  28px;
+  --mm-section:    72px;
+  --mm-control-h:   46px;   /* buttons */
+  --mm-field-h:     48px;   /* inputs — deliberately taller than buttons */
+
+  /* ---- Motion ----------------------------------------------------------- */
+  /* One easing does almost all the work on the site; the slower one is for
+     things that travel a distance (drawers, reveals). */
+  --mm-ease:      cubic-bezier(.2, .7, .2, 1);
+  --mm-ease-out:  cubic-bezier(.16, 1, .3, 1);
+  --mm-dur-fast:  .18s;
+  --mm-dur:       .25s;
+  --mm-dur-slow:  .45s;
+}
+
+/* ===========================================================================
+   2. SEMANTIC — light
+   The portals' default. The marketing site is dark-first, but its inner pages
+   (markets, accounts, spreads) are light, and those are the pages a portal
+   actually resembles: dense tables, forms, numbers.
+   =========================================================================== */
+:root,
+[data-mm-theme='light'] {
+  --mm-bg-h:          var(--mm-canvas-h);
+  --mm-surface-h:     var(--mm-paper-h);
+  --mm-surface-2-h:   var(--mm-mist-h);
+  --mm-ink-fg-h:      var(--mm-ink-h);
+  --mm-ink-2-h:       var(--mm-slate-lo-h);
+  --mm-ink-3-h:       var(--mm-faint-h);
+  --mm-hairline-h:    var(--mm-line-h);
+
+  --mm-accent-h:      var(--mm-lime-h);
+  --mm-on-accent-h:   var(--mm-ink-h);      /* NEVER white — see README */
+  --mm-accent-text-h: var(--mm-lime-ink-h); /* the only lime safe as text here */
+  --mm-accent-wash:   hsl(var(--mm-lime-h) / .16);
+  --mm-accent-ring:   hsl(var(--mm-lime-h) / .35);
+
+  --mm-pos-h:         var(--mm-up-h);
+  --mm-neg-h:         var(--mm-down-h);
+  --mm-warning-h:     var(--mm-warn-h);
+  --mm-warning-text-h:var(--mm-warn-ink-h);
+
+  /* Chart series. Not derived from the accent: lime is a 1.4:1 line on a white
+     card. Each light value clears 3:1 on every light surface, the WCAG floor
+     for a graphical object. Note slots 1 and 2 are only ΔE 12 apart to normal
+     vision — close enough that they must never be two lines on one plot. */
+  --mm-chart-1-h:  75 90% 25%;   /* #5c7906  lime, darkened   5.0:1 */
+  --mm-chart-2-h: 146 67% 30%;   /* #198046  credit           5.0:1 */
+  --mm-chart-3-h: 215  9% 45%;   /* #68717d  neutral          4.9:1 */
+  --mm-chart-4-h:   0 64% 52%;   /* #d33636  debit            4.8:1 */
+  --mm-chart-5-h:  32 92% 34%;   /* #a65c07  pending          4.7:1 */
+
+  /* Chrome — the sidebar and top bar stay dark in both themes. That contrast
+     is the site's, and it is what makes a portal read as Movement Markets at a
+     glance rather than as a generic dashboard. */
+  --mm-chrome-h:      var(--mm-black-h);
+  --mm-chrome-2-h:    var(--mm-d-surface-h);
+  --mm-chrome-ink-h:  var(--mm-d-ink-h);
+  --mm-chrome-ink-2-h:var(--mm-d-slate-h);
+  --mm-chrome-line-h: var(--mm-d-line-h);
+
+  --mm-shadow-sm: 0 1px 2px hsl(var(--mm-ink-h) / .05);
+  --mm-shadow:    0 4px 20px hsl(var(--mm-ink-h) / .04);
+  --mm-shadow-lg: 0 22px 60px hsl(var(--mm-ink-h) / .14);
+  --mm-shadow-chrome: 0 22px 60px hsl(0 0% 0% / .5);
+}
+
+/* ===========================================================================
+   2. SEMANTIC — dark
+   =========================================================================== */
+[data-mm-theme='dark'],
+.dark {
+  --mm-bg-h:          var(--mm-black-h);
+  --mm-surface-h:     var(--mm-d-surface-h);
+  --mm-surface-2-h:   var(--mm-d-surface2-h);
+  --mm-ink-fg-h:      var(--mm-d-ink-h);
+  --mm-ink-2-h:       var(--mm-d-slate-h);
+  --mm-ink-3-h:       var(--mm-d-faint-h);
+  --mm-hairline-h:    var(--mm-d-line-h);
+
+  --mm-accent-h:      var(--mm-lime-h);
+  --mm-on-accent-h:   var(--mm-ink-h);
+  --mm-accent-text-h: var(--mm-lime-h);     /* 14.3:1 on the dark canvas */
+  --mm-accent-wash:   hsl(var(--mm-lime-h) / .12);
+  --mm-accent-ring:   hsl(var(--mm-lime-h) / .4);
+
+  --mm-pos-h:         var(--mm-d-up-h);
+  --mm-neg-h:         var(--mm-d-down-h);
+  --mm-warning-h:     var(--mm-d-warn-h);
+  --mm-warning-text-h:var(--mm-d-warn-h);
+
+  /* The dark set uses the brand values directly — they already clear the floor
+     against near-black. */
+  --mm-chart-1-h:  76 100% 47%;  /* #b0f000 */
+  --mm-chart-2-h: 137  65% 66%;  /* #70e190 */
+  --mm-chart-3-h: 135   4% 64%;  /* #b0b0b0 */
+  --mm-chart-4-h:   0 100% 74%;  /* #ff7a7a */
+  --mm-chart-5-h:  32  92% 62%;  /* #f7a445 */
+
+  --mm-chrome-h:      var(--mm-black-h);
+  --mm-chrome-2-h:    var(--mm-d-surface-h);
+  --mm-chrome-ink-h:  var(--mm-d-ink-h);
+  --mm-chrome-ink-2-h:var(--mm-d-slate-h);
+  --mm-chrome-line-h: var(--mm-d-line-h);
+
+  --mm-shadow-sm: 0 1px 2px hsl(0 0% 0% / .4);
+  --mm-shadow:    0 4px 20px hsl(0 0% 0% / .12);
+  --mm-shadow-lg: 0 22px 60px hsl(0 0% 0% / .5);
+  --mm-shadow-chrome: 0 22px 60px hsl(0 0% 0% / .5);
+}
+
+/* ---------------------------------------------------------------------------
+   Wrapped mirrors. Plain CSS reads these; Tailwind and shadcn read the -h
+   triplets above. Adding a colour means adding it in both places.
+
+   The selector list matters. A custom property is substituted against the
+   element it is DECLARED on, so mirrors declared only on :root would keep
+   resolving to the root theme even inside a nested [data-mm-theme] block.
+   Repeating the declaration on the theme selectors lets a dark panel inside a
+   light page resolve its own values.
+   --------------------------------------------------------------------------- */
+:root,
+[data-mm-theme],
+.dark {
+  --mm-bg:          hsl(var(--mm-bg-h));
+  --mm-surface:     hsl(var(--mm-surface-h));
+  --mm-surface-2:   hsl(var(--mm-surface-2-h));
+  --mm-ink:         hsl(var(--mm-ink-fg-h));
+  --mm-ink-2:       hsl(var(--mm-ink-2-h));
+  --mm-ink-3:       hsl(var(--mm-ink-3-h));
+  --mm-hairline:    hsl(var(--mm-hairline-h));
+  --mm-accent:      hsl(var(--mm-accent-h));
+  --mm-on-accent:   hsl(var(--mm-on-accent-h));
+  --mm-accent-text: hsl(var(--mm-accent-text-h));
+  --mm-pos:         hsl(var(--mm-pos-h));
+  --mm-neg:         hsl(var(--mm-neg-h));
+  --mm-warning:     hsl(var(--mm-warning-h));
+  --mm-warning-text:hsl(var(--mm-warning-text-h));
+  --mm-chart-1:     hsl(var(--mm-chart-1-h));
+  --mm-chart-2:     hsl(var(--mm-chart-2-h));
+  --mm-chart-3:     hsl(var(--mm-chart-3-h));
+  --mm-chart-4:     hsl(var(--mm-chart-4-h));
+  --mm-chart-5:     hsl(var(--mm-chart-5-h));
+  --mm-chrome:      hsl(var(--mm-chrome-h));
+  --mm-chrome-2:    hsl(var(--mm-chrome-2-h));
+  --mm-chrome-ink:  hsl(var(--mm-chrome-ink-h));
+  --mm-chrome-ink-2:hsl(var(--mm-chrome-ink-2-h));
+  --mm-chrome-line: hsl(var(--mm-chrome-line-h));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --mm-dur-fast: .01ms; --mm-dur: .01ms; --mm-dur-slow: .01ms; }
+}

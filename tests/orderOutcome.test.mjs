@@ -18,18 +18,32 @@ test('timeouts and lost responses are unknown; validation, auth and gates are re
  assert.equal(classifyFailure({status:504,data:{outcome:'rejected'}}),'rejected');
  assert.equal(classifyFailure(undefined),'rejected');
 });
-test('reconciliation matches only a new order with the same symbol, side and volume',()=>{
+test('reconciliation matches only one new order with the same execution intent',()=>{
  const req={symbol:'EURUSD',orderType:'BUY',executionType:'MARKET',lotSize:0.5};
  const started=Date.parse('2026-09-26T10:00:00Z');
  const orders=[
-  {id:1,symbol:'EURUSD',orderType:'BUY',lotSize:0.5,createdAt:'2026-09-26T09:59:59Z'},
-  {id:2,symbol:'EURUSD',orderType:'SELL',lotSize:0.5,createdAt:'2026-09-26T10:00:01Z'},
-  {id:3,symbol:'GBPUSD',orderType:'BUY',lotSize:0.5,createdAt:'2026-09-26T10:00:01Z'},
-  {id:4,symbol:'EURUSD',orderType:'BUY',lotSize:'0.25',createdAt:'2026-09-26T10:00:01Z'},
+  {id:1,symbol:'EURUSD',orderType:'BUY',executionType:'MARKET',lotSize:0.5,createdAt:'2026-09-26T09:59:59Z'},
+  {id:2,symbol:'EURUSD',orderType:'SELL',executionType:'MARKET',lotSize:0.5,createdAt:'2026-09-26T10:00:01Z'},
+  {id:3,symbol:'GBPUSD',orderType:'BUY',executionType:'MARKET',lotSize:0.5,createdAt:'2026-09-26T10:00:01Z'},
+  {id:4,symbol:'EURUSD',orderType:'BUY',executionType:'MARKET',lotSize:'0.25',createdAt:'2026-09-26T10:00:01Z'},
   {id:5,symbol:'EURUSD',orderType:'BUY_LIMIT',lotSize:'0.50',createdAt:'2026-09-26T10:00:02Z'},
+  {id:6,symbol:'EURUSD',orderType:'BUY',lotSize:'0',lotSizeStore:'0.50',orderDetails:{entryExecutionType:'MARKET'},createdAt:'2026-09-26T10:00:02Z'},
  ];
- assert.equal(findSubmittedOrder(req,['1'],orders,started)?.id,5);
- assert.equal(findSubmittedOrder(req,['1','5'],orders,started),undefined);
- assert.equal(findSubmittedOrder(req,[],[{id:9,symbol:'EURUSD',orderType:'BUY',lotSize:0.5,createdAt:'2026-09-25T10:00:00Z'}],started),undefined);
- assert.equal(findSubmittedOrder(req,[],[{id:9,symbol:'EURUSD',orderType:'BUY',volume:0.5}],started)?.id,9);
+ assert.equal(findSubmittedOrder(req,['1'],orders,started)?.id,6);
+ assert.equal(findSubmittedOrder(req,['1','6'],orders,started),undefined);
+ const match=orders[5];
+ for(const change of [{createdAt:undefined},{createdAt:'2026-09-25T10:00:00Z'},{lotSizeStore:undefined,lotSize:undefined},{orderDetails:undefined},{sl:'1.05'}]) {
+  assert.equal(findSubmittedOrder(req,[],[{...match,...change}],started),undefined);
+ }
+ assert.equal(findSubmittedOrder(req,[],[match,{...match,id:7}],started),undefined);
+ assert.equal(findSubmittedOrder(req,[],[match,match],started)?.id,6);
+});
+test('pending reconciliation requires entry price, type and protection levels to match',()=>{
+ const req={symbol:'EURUSD',orderType:'BUY',executionType:'LIMIT',limitPrice:1.09,lotSize:.01,sl:1.08,tp:1.12};
+ const started=Date.parse('2026-09-26T10:00:00Z');
+ const match={id:11,symbol:'EURUSD',orderType:'BUY',lotSize:'.01',createdAt:'2026-09-26T10:00:01Z',sl:'1.08',tp:'1.12',orderDetails:{entryExecutionType:'LIMIT',entrylimit:'1.09'}};
+ assert.equal(findSubmittedOrder(req,[],[match],started)?.id,11);
+ for(const change of [{orderDetails:{entryExecutionType:'STOP',entrylimit:'1.09'}},{orderDetails:{entryExecutionType:'LIMIT',entrylimit:'1.085'}},{sl:1.07},{tp:undefined}]) {
+  assert.equal(findSubmittedOrder(req,[],[{...match,...change}],started),undefined);
+ }
 });

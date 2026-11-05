@@ -1,27 +1,24 @@
-const currencies = new Set(['EUR', 'USD', 'GBP', 'AUD', 'JPY']);
-const assets = new Set([...currencies, 'BTC', 'ETH', 'XAU', 'XAG']);
+"use client";
+import { useState } from 'react';
+import { useMarketDisplay } from '@/hooks/useMarketDisplay';
+import { artworkLegs, artworkPath, artworkKind } from '@/lib/instrumentArtwork';
 
-// Decorative beside the instrument name. Percentage sizing keeps pairs in proportion
-// in the watchlist, chart heading, ticket and compact position rows.
+function Artwork({ code }: { code: string }) {
+  const [failed, setFailed] = useState(false);
+  const src = artworkPath(code);
+  return <span className={`asset-disc asset-${artworkKind(code)}`}>
+    {src && !failed ? <img src={src} alt="" width="40" height="40" draggable={false} onError={() => setFailed(true)} />
+      : <span>{code.slice(0, 3)}</span>}
+  </span>;
+}
+
+// The same locally served artwork and metadata-first symbol mapping as XpertTrader.
 export function InstrumentIcon({ symbol }: { symbol: string }) {
-  const normalized = symbol.toUpperCase().replace(/[\s/_-]/g, '');
-  const base = normalized.slice(0, 3);
-  const counter = normalized.slice(3, 6);
-  const pair = currencies.has(base) && currencies.has(counter);
-  return (
-    <span aria-hidden="true" className={`instrument-icon instrument-art${pair ? ' currency-pair' : ''}`}>
-      {assets.has(base) ? (
-        <span className="instrument-disc base-disc">
-          <img src={`/instruments/${base.toLowerCase()}.svg?v=refined`} alt="" width="40" height="40" draggable={false} />
-        </span>
-      ) : (
-        <span className="instrument-monogram">{base.slice(0, 2) || '—'}</span>
-      )}
-      {pair && (
-        <span className="instrument-disc counter-disc">
-          <img src={`/instruments/${counter.toLowerCase()}.svg?v=refined`} alt="" width="24" height="24" draggable={false} />
-        </span>
-      )}
-    </span>
-  );
+  const { instrument } = useMarketDisplay();
+  const meta = instrument(symbol);
+  const { base, quote } = artworkLegs(symbol, { base: meta.baseCurrency, quote: meta.quoteCurrency });
+  return <span aria-hidden="true" className={`instrument-icon instrument-art app-artwork${quote ? ' asset-pair' : ''}`}>
+    <Artwork key={base} code={base} />
+    {quote && <Artwork key={`quote:${quote}`} code={quote} />}
+  </span>;
 }

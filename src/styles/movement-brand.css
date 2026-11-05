@@ -1,0 +1,171 @@
+/* Movement Markets identity and typography with restrained terminal controls.
+   The portal tokens stay canonical; shape and execution-fill choices are local
+   to this trading surface. Preserve the one-page grid and interaction sizing. */
+.terminal-single-page,.terminal-dialog {
+  --terminal-control-radius:6px;
+  --terminal-panel-radius:12px;
+  --terminal-buy-fill:#28634f;
+  --terminal-sell-fill:#a3464d;
+}
+
+html {font-size:14.5px}
+body {font-family:var(--mm-font-body);font-size:var(--mm-text-base);font-feature-settings:normal;-moz-osx-font-smoothing:grayscale}
+.terminal-single-page,.terminal-dialog {font-family:var(--mm-font-body)}
+.terminal-single-page :is(h1,h2,h3),.terminal-dialog :is(h1,h2,h3) {font-family:var(--mm-font-display);font-weight:600}
+.terminal-single-page :is(.market-price,.orders-table,.volume-control,.desktop-account-summary,.account-selector,.chart-order-start,.place-order) {font-variant-numeric:tabular-nums}
+
+/* Neutral controls; saturated colour is reserved for execution and status. */
+.terminal-single-page .button,.terminal-dialog .button {
+  border-radius:var(--terminal-control-radius);font-family:var(--mm-font-body);font-weight:500;letter-spacing:0;
+  transition:background var(--mm-dur-fast),border-color var(--mm-dur-fast),color var(--mm-dur-fast);
+}
+.terminal-single-page .button-primary,.terminal-dialog .button-primary {background:var(--mm-control);color:var(--mm-control-ink);border-color:transparent}
+.terminal-single-page .button-primary:hover:not(:disabled),.terminal-dialog .button-primary:hover:not(:disabled) {background:var(--mm-control-hover);filter:none}
+.terminal-single-page .button-outline,.terminal-dialog .button-outline {background:transparent;color:var(--mm-ink);border-color:var(--mm-hairline)}
+.terminal-single-page .button-outline:hover:not(:disabled),.terminal-dialog .button-outline:hover:not(:disabled) {background:var(--mm-surface-2);border-color:var(--mm-ink-2)}
+.terminal-single-page :is(a,button,input,select,textarea,[tabindex]):focus-visible,.terminal-dialog :is(a,button,input,select,textarea,[tabindex]):focus-visible {outline-color:var(--mm-accent-text)}
+
+/* Identity and workspace navigation */
+.terminal-header .brand-link {display:flex;align-items:center;flex:none;color:var(--mm-ink);padding-right:16px;border-right:1px solid var(--mm-line-soft)}
+.terminal-header .terminal-brand {gap:11px}
+.terminal-header .terminal-brand>svg {width:24px;height:auto}
+.terminal-header .terminal-wordmark {font-size:15.5px;font-weight:300;line-height:1;letter-spacing:-.005em}
+.terminal-header .terminal-wordmark b {font-weight:700}
+.terminal-header .terminal-brand-sub {font-size:10px;font-weight:400;line-height:1.4;margin-top:6px;letter-spacing:.02em;color:var(--mm-ink-2)}
+.terminal-header .brand-link:focus-visible {outline:2px solid var(--accent-ink);outline-offset:4px;border-radius:4px}
+.terminal-single-page .desktop-heading .button {border-radius:var(--terminal-control-radius);font-weight:500;min-height:36px;font-size:12px;padding-inline:13px}
+.terminal-single-page .workspace-panel-toggles .button {background:transparent;border-color:var(--mm-hairline);color:var(--mm-ink)}
+.terminal-single-page .workspace-panel-toggles .button:hover {background:var(--mm-surface-2);border-color:var(--mm-ink-2)}
+.terminal-single-page .workspace-panel-toggles [aria-expanded="true"] {color:var(--mm-ink);background:var(--mm-surface-2);border-color:var(--mm-line-strong)}
+.terminal-single-page .workspace-panel-toggles [aria-expanded="true"]>svg {color:var(--mm-ink-2)}
+.terminal-single-page .workspace-ticket-toggle {background:var(--mm-control);color:var(--mm-control-ink);border-color:transparent}
+.terminal-single-page .workspace-ticket-toggle:hover:not(:disabled) {background:var(--mm-control-hover);filter:none}
+.terminal-single-page .icon-button {border-radius:var(--terminal-control-radius)}
+.terminal-single-page .account-selector {border-radius:var(--terminal-control-radius);background:var(--mm-surface);border:1px solid var(--mm-hairline);padding-inline:14px}
+.terminal-single-page .terminal-search {border-radius:var(--terminal-control-radius);border-color:var(--mm-line-soft)}
+.terminal-single-page .terminal-search:focus-visible,.toolbar-menu summary:focus-visible {outline-color:var(--accent-ink)}
+.terminal-single-page .terminal-header :is(button,a)>svg {stroke-width:1.75}
+
+/* White cards on the portal canvas. Leave space between cards, not inside the
+   plot; never scale the page or the canvas coordinate system. */
+.terminal-single-page .panel {border-radius:var(--terminal-panel-radius);background:var(--mm-surface);border-color:var(--mm-hairline);box-shadow:none}
+.terminal-single-page .workspace-ticket {border-radius:var(--terminal-panel-radius)}
+.terminal-single-page .workspace-watchlist .panel-heading h2,
+.terminal-single-page .workspace-ticket .panel-heading h2 {font-family:var(--mm-font-display);font-size:18px;font-weight:600;letter-spacing:-.02em}
+.terminal-single-page .instrument-heading :is(h1,h2) {font-family:var(--mm-font-display);font-weight:600;letter-spacing:-.025em}
+.terminal-single-page .desktop-account-summary dd,.terminal-single-page .account-selector-text strong {font-family:var(--mm-font-display);font-weight:500}
+.terminal-single-page .workspace-watchlist .market-name strong {font-weight:600;letter-spacing:0}
+.terminal-single-page .workspace-watchlist .market-price :is(strong,small) {font-weight:500;letter-spacing:0;color:var(--mm-ink)}
+.terminal-single-page .workspace-watchlist .market-search-wrap input {font-size:12px}
+.terminal-single-page .workspace-watchlist .market-search-wrap,.terminal-single-page .activity-search {background:var(--mm-surface-2);border-radius:var(--terminal-control-radius);border-color:var(--mm-line-soft)}
+.terminal-single-page input:not([type="checkbox"]):not([type="radio"]),.terminal-single-page select {border-radius:var(--terminal-control-radius)}
+.terminal-single-page .volume-control {border-radius:var(--terminal-control-radius);background:var(--mm-surface-2)}
+.terminal-single-page .volume-control input {font-family:var(--mm-font-display);font-weight:500;background:transparent;border-radius:0}
+.terminal-single-page .volume-control button {border-radius:0}
+
+/* Section navigation follows the portal's My accounts / Performance tabs.
+   Counts and selected records remain neutral so P&L and trade sides are clear. */
+.terminal-single-page .workspace-activity .activity-heading {padding-inline:14px}
+/* Match the workspace selector so older compact rules cannot reduce this gap. */
+.terminal-single-page .workspace-activity .activity-tabs {gap:20px;align-self:stretch}
+.terminal-single-page .workspace-activity .activity-tabs button {flex:none;gap:8px;border-radius:0;padding-inline:6px;background:transparent;color:var(--mm-ink-2);font-size:13px;font-weight:500;box-shadow:none}
+.terminal-single-page .workspace-activity .activity-tabs button[aria-selected="true"] {background:transparent;color:var(--mm-ink);font-weight:600;box-shadow:inset 0 -2px var(--mm-accent)}
+.terminal-single-page .activity-tabs button[aria-selected="true"]::after {display:none}
+.terminal-single-page .activity-tabs .count,.terminal-single-page .activity-tabs button[aria-selected="true"] .count {background:var(--mm-surface-2);color:var(--mm-ink-2);border-radius:5px}
+.terminal-single-page .instrument-tabs {background:var(--mm-surface)}
+.terminal-single-page .instrument-tabs .is-active {background:var(--mm-surface);box-shadow:inset 0 -2px var(--mm-accent)}
+.terminal-single-page .workspace-watchlist .market-row {border-radius:8px;border-bottom-color:var(--mm-line-soft)}
+.terminal-single-page .workspace-watchlist .market-row.selected {background:var(--mm-surface-2);box-shadow:inset 2px 0 var(--mm-accent)}
+.terminal-single-page .orders-table tr.selected-trade-row {background:var(--mm-surface-2)}
+.terminal-single-page .orders-table tr.selected-trade-row>td:first-child {box-shadow:inset 2px 0 var(--mm-accent)}
+.terminal-single-page .orders-table td:first-child>.text-button {color:var(--mm-ink)}
+.terminal-single-page .orders-table td:first-child>.text-button:hover .activity-symbol {text-decoration:underline;text-underline-offset:3px}
+.terminal-single-page .orders-table th {font-weight:500;color:var(--mm-ink-2);background:var(--mm-surface-2)}
+.terminal-single-page .orders-table .row-manage .icon-button {border-color:var(--mm-hairline);background:transparent;border-radius:var(--terminal-control-radius);font-weight:600;padding-inline:10px}
+.terminal-single-page .orders-table .row-manage .icon-button:hover {border-color:var(--mm-ink-2);background:var(--mm-surface-2)}
+.terminal-single-page .watchlist-favorites-filter {border-radius:var(--terminal-control-radius);font-weight:500}
+.terminal-single-page .watchlist-favorites-filter[aria-pressed="true"] {background:var(--mm-surface-2);color:var(--mm-ink);border-color:var(--mm-ink-2)}
+.terminal-single-page .watchlist-favorites-filter[aria-pressed="true"] svg {color:inherit}
+
+/* A consistent small radius across fields, presets and trade actions. */
+.terminal-single-page .volume-presets button {border-radius:var(--terminal-control-radius);font-weight:500}
+.terminal-single-page .volume-presets button[aria-pressed="true"] {background:var(--mm-surface-2);color:var(--mm-ink);border-color:var(--mm-ink-2);font-weight:600}
+.terminal-single-page :is(.one-tap-toggle,.quick-close-toggle) {border-radius:var(--terminal-control-radius)}
+.terminal-single-page :is(.one-tap-toggle,.quick-close-toggle)[aria-pressed="true"] {background:var(--mm-surface-2);color:var(--mm-ink);border-color:var(--mm-ink-2);font-weight:600}
+.terminal-single-page .activity-actions .quick-close-toggle[aria-pressed="true"] {border-color:var(--mm-ink-2)}
+.terminal-single-page .workspace-ticket .place-order {border-radius:var(--terminal-control-radius);font-weight:600;letter-spacing:-.01em}
+.terminal-single-page .place-order.buy {background:var(--terminal-buy-fill);color:#fff}
+.terminal-single-page .place-order.sell {background:var(--terminal-sell-fill);color:#fff}
+.terminal-single-page .place-order.buy:hover:not(:disabled) {background:color-mix(in srgb,var(--terminal-buy-fill) 88%,black);filter:none}
+.terminal-single-page .place-order.sell:hover:not(:disabled) {background:color-mix(in srgb,var(--terminal-sell-fill) 88%,black);filter:none}
+.terminal-single-page .chart-order-start strong,.terminal-single-page .place-order strong {font-family:var(--mm-font-display);font-weight:500}
+.terminal-single-page .order-bottom {border-top:1px solid var(--mm-line-soft)}
+.terminal-single-page .ticket-confirmed-inline:not(.is-working):not(.is-uncertain) {padding:7px 0 9px;background:transparent;border:0;border-bottom:1px solid var(--mm-line-soft);border-radius:0;gap:2px}
+.terminal-single-page .ticket-confirmed-inline:not(.is-working):not(.is-uncertain) strong {font-weight:500;color:var(--mm-ink)}
+.terminal-single-page .ticket-confirmed-inline:not(.is-working):not(.is-uncertain) strong>svg {color:var(--mm-pos)}
+.terminal-single-page .chart-order-start {border-radius:var(--terminal-control-radius)}
+.terminal-single-page .timeframes button {border-radius:var(--terminal-control-radius)}
+.terminal-single-page .timeframes button[aria-pressed="true"] {background:var(--mm-surface-2);color:var(--mm-ink);box-shadow:inset 0 -2px var(--mm-accent)}
+.terminal-dialog {border-radius:var(--terminal-panel-radius)}
+
+/* Use the portal's 12px labels / 13px table text, not the old 9-11px terminal
+   type. Compact mode controls spacing, not a different font hierarchy. */
+.terminal-single-page .workspace-watchlist .market-name strong,
+.terminal-single-page[data-density="compact"] .workspace-watchlist .market-name strong {font-size:13px}
+.terminal-single-page .workspace-watchlist .market-price :is(strong,small),
+.terminal-single-page[data-density="compact"] .workspace-watchlist .market-price :is(strong,small) {font-size:12px}
+.terminal-single-page .workspace-watchlist .market-name small,
+.terminal-single-page[data-density="compact"] .workspace-watchlist .market-name small {font-size:11px}
+.terminal-single-page .workspace-ticket .ticket-order-kind,.terminal-single-page .workspace-ticket .field-label {font-size:12px;font-weight:500}
+.terminal-single-page .workspace-ticket .ticket-order-kind select,
+.terminal-single-page[data-density="compact"] .workspace-ticket .ticket-order-kind select {font-size:13px;height:36px}
+.terminal-single-page .workspace-ticket .volume-presets button,
+.terminal-single-page[data-density="compact"] .workspace-ticket .volume-presets button {font-size:12px;min-height:30px}
+.terminal-single-page .workspace-chart .instrument-title h1,
+.terminal-single-page[data-density="compact"] .workspace-chart .instrument-title h1 {font-size:18px;letter-spacing:-.02em}
+.terminal-single-page .workspace-activity .orders-table td,
+.terminal-single-page[data-density="compact"] .workspace-activity .orders-table td {font-size:13px}
+.terminal-single-page .workspace-activity .orders-table th {font-size:12px}
+.terminal-single-page .workspace-activity .orders-table td small {font-size:11px}
+.terminal-single-page .account-selector-text strong {font-size:15px}
+.terminal-single-page .desktop-account-summary dd,
+.terminal-single-page[data-density="compact"] .desktop-account-summary dd,
+.terminal-single-page[data-density="compact"] .desktop-account-summary dl>div:first-child dd {font-size:15px;font-weight:500}
+
+/* Match the reference's alignment without importing its large page heading or
+   sidebar. Keep short laptop viewports compact and both execution buttons fixed. */
+@media(min-width:760px) {
+  .terminal-single-page .terminal-header,.terminal-single-page[data-density="compact"] .terminal-header {height:58px;min-height:58px;padding-inline:14px;gap:12px}
+  .terminal-single-page .unified-workspace,.terminal-single-page[data-density="compact"] .unified-workspace {padding:12px;column-gap:12px}
+  .terminal-single-page .workspace-watchlist .panel-heading,.terminal-single-page[data-density="compact"] .workspace-watchlist .panel-heading {padding:10px 12px 8px}
+  .terminal-single-page .workspace-watchlist .market-search-wrap {margin-inline:12px}
+  .terminal-single-page .workspace-watchlist .market-filter-controls {padding-inline:12px}
+  .terminal-single-page .workspace-watchlist .market-list {padding-inline:8px}
+  .terminal-single-page .workspace-chart .instrument-heading,.terminal-single-page[data-density="compact"] .workspace-chart .instrument-heading {padding-inline:12px}
+  .terminal-single-page .workspace-ticket .panel-heading,.terminal-single-page[data-density="compact"] .workspace-ticket .panel-heading {padding:14px 14px 12px}
+  .terminal-single-page .workspace-ticket .order-scroll,.terminal-single-page[data-density="compact"] .workspace-ticket .order-scroll {padding-inline:14px}
+  .terminal-single-page .workspace-ticket .order-bottom,.terminal-single-page[data-density="compact"] .workspace-ticket .order-bottom {padding:12px 14px}
+  .terminal-single-page .workspace-activity .activity-heading,.terminal-single-page[data-density="compact"] .workspace-activity .activity-heading {min-height:40px;padding:0 14px}
+  .terminal-single-page .workspace-activity .activity-tabs button,.terminal-single-page[data-density="compact"] .workspace-activity .activity-tabs button {align-self:stretch;padding:0 6px;min-height:38px}
+  .terminal-single-page .desktop-account-summary {padding-inline:16px}
+}
+@media(min-width:1180px) {
+  /* The header's Order ticket toggle already closes the docked panel. Keep the
+     separate close control for the floating ticket and mobile drawer. */
+  .terminal-single-page .ticket-visibility-control {display:none}
+}
+@media(min-width:1280px) {
+  .terminal-header .brand-link {width:236px;padding-left:6px}
+}
+@media(min-width:760px) and (max-height:700px) {
+  .terminal-single-page .terminal-header,.terminal-single-page[data-density="compact"] .terminal-header {height:52px;min-height:52px}
+  .terminal-single-page .unified-workspace,.terminal-single-page[data-density="compact"] .unified-workspace {padding-block:8px}
+  .terminal-single-page .workspace-ticket .panel-heading,.terminal-single-page[data-density="compact"] .workspace-ticket .panel-heading {padding-block:10px}
+}
+@media(min-width:760px) and (max-width:999px), (max-width:599px) {
+  .terminal-header .brand-link .terminal-brand>span {display:none}
+  .terminal-header .brand-link {padding-right:8px}
+}
+@media(max-width:1050px) {
+  .terminal-single-page .workspace-activity .activity-tabs {gap:14px}
+}

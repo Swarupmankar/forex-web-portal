@@ -1,12 +1,14 @@
 "use client";
+import { useMarketDisplay } from '@/hooks/useMarketDisplay';
 import { useEffect, useRef, useState } from 'react';
 import { GripVertical, X, ArrowUp, ArrowDown, ScanLine } from 'lucide-react';
 import type { ChartEngine } from './useChartEngine';
 import { chartDragCoordinate, chartPrice } from '@/lib/chartInteraction';
-import { formatPrice, instrument } from '@/lib/market';
+
 
 /** Draft only: moving this handle never submits or modifies an order. */
 export function ChartPendingEntry({engine,price,symbol,onChange,onCancel}:{engine:ChartEngine|null;price:number;symbol:string;onChange:(p:number)=>void;onCancel:()=>void}) {
+  const { formatPrice, instrument } = useMarketDisplay();
   const [geometry,setGeometry]=useState({y:0,width:0,height:0});
   const [dragging,setDragging]=useState(false);
   const latest=useRef(price);latest.current=price;

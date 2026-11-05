@@ -93,18 +93,18 @@ test('a skewed local clock no longer freezes the chart', () => {
   assert.equal(feedTimeMs(NaN, 5000, 10), 5010);
 });
 
-test('live bars are capped at 3000, dropping the oldest', () => {
-  assert.equal(MAX_BARS, 3000);
-  const live = liveFrom(Array.from({ length: 3000 }, (_, i) => bar(i * 60, 1)));
-  assert.equal(applyTick(live, 2, 3000 * 60 + 5, 60), 3000 * 60);
-  assert.equal(live.bars.length, 3000);
+test('live bars are capped at the history limit, dropping the oldest', () => {
+  assert.equal(MAX_BARS, 20000);
+  const live = liveFrom(Array.from({ length: MAX_BARS }, (_, i) => bar(i * 60, 1)));
+  assert.equal(applyTick(live, 2, MAX_BARS * 60 + 5, 60), MAX_BARS * 60);
+  assert.equal(live.bars.length, MAX_BARS);
   assert.equal(live.bars[0].time, 60);
-  assert.deepEqual(live.bars.at(-1), bar(180000, 2));
+  assert.deepEqual(live.bars.at(-1), bar(MAX_BARS * 60, 2));
   // A small cap for callers that need one, and history is trimmed the same way on reconcile.
   const small = liveFrom([bar(0, 1), bar(60, 1)]);
   applyTick(small, 1, 125, 60, 2);
   assert.deepEqual(small.bars.map(b => b.time), [60, 120]);
-  assert.equal(reconcileBars(Array.from({ length: 3005 }, (_, i) => bar(i * 60, 1)), []).length, 3000);
+  assert.equal(reconcileBars(Array.from({ length: MAX_BARS + 5 }, (_, i) => bar(i * 60, 1)), []).length, MAX_BARS);
 });
 
 test('mergeTick keeps its immutable contract on top of applyTick', () => {

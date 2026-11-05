@@ -1,4 +1,5 @@
 "use client";
+import { useSessionServices } from "@/store/useSessionServices";
 import { useEffect } from "react";
 import { DEVELOPMENT_FEED, PREVIEW_FEED } from "@/lib/market";
 import { usePracticeStore } from "@/store/usePracticeStore";
@@ -24,16 +25,19 @@ export function useExecutionPolicy(): ExecutionPolicy {
   const authenticated = useUIStore((s) => s.isAuthenticated);
   const status = useTradingStatus((s) => s.status);
   const statusError = useTradingStatus((s) => s.error);
+  const binding = useSessionServices(s => s.binding);
+  const bindingError = useSessionServices(s => s.error);
   if (practice) return { practice, canPlace: true, canManage: true, canPlaceSymbol: () => true };
   const mode = statusError ? undefined : status?.mode;
   const reason = !authenticated ? "Connect a trading account to trade."
     : PREVIEW_FEED || DEVELOPMENT_FEED ? "Trading is unavailable on the development price feed."
+    : !binding ? bindingError || "Connecting this account’s trading server…"
     : statusError ? "Trading status is unavailable. Orders are paused until it's confirmed."
     : !mode ? "Checking trading availability…"
     : mode === "halted" ? "Trading is temporarily unavailable. Your account remains accessible."
     : mode === "close-only" ? "Close-only mode: you can close or reduce positions; new orders are paused."
     : undefined;
-  const base = authenticated && !PREVIEW_FEED && !DEVELOPMENT_FEED && !!mode;
+  const base = authenticated && !!binding && !PREVIEW_FEED && !DEVELOPMENT_FEED && !!mode;
   const canPlace = base && mode === "enabled";
   const halted = new Set(status?.haltedSymbols ?? []);
   return {

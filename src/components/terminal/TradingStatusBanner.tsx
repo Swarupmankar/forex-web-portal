@@ -12,12 +12,8 @@ export function TradingStatusBanner() {
   const status = useTradingStatus((s) => s.status);
   const halted = status?.haltedSymbols ?? [];
   const limited = !policy.practice && authenticated && policy.mode !== "enabled" && policy.reason;
-  const env = status?.env;
   return (
     <>
-      {env && env !== "production" && (
-        <span className={`env-badge is-${env}`} title={`Build ${status?.version || "dev"}`}>{env === "staging" ? "Staging" : "Development"}</span>
-      )}
       {(limited || (!policy.practice && authenticated && halted.length > 0)) && (
         <div className={`trading-status-banner ${policy.mode === "close-only" ? "is-close-only" : ""}`} role="status">
           <TriangleAlert />

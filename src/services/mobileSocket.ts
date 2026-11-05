@@ -1,10 +1,16 @@
+import { eventNotification } from '@/lib/tradeNotifications';
+import { eventSound } from '@/lib/executionSounds';
+import { playTradeSoundOnce } from '@/lib/tradeSound';
+import { useTradeManagement } from '@/store/useTradeManagement';
 // Trading-engine notifications: wss://<engine>/ws/mobile?token=<trading token>
 // (MOBILE-TRADING-INTEGRATION.md §8). Under A-book this is the only place an order's fill or the
 // venue's rejection is reported. Nothing is replayed, so every (re)connect re-fetches orders.
+import { useSessionServices } from "@/store/useSessionServices";
 import { store } from "@/store";
-import { tradingApi } from "@/store/api/tradingApi";
+import { refreshTradingState, tradingApi } from "@/store/api/tradingApi";
 import { tradingToken } from "@/store/useAccountStore";
-import { useWorkspaceStore, type ToastKind } from "@/store/useWorkspaceStore";
+import { useWorkspaceStore } from "@/store/useWorkspaceStore";
+import { useOrderFlow } from '@/store/useOrderFlow';
 
 export type MobileNotificationEvent =
   | 'ORDER_FILLED'
@@ -27,23 +33,20 @@ export interface MobileNotificationPayload {
   ts: string;
 }
 
-const ENGINE_URL = process.env.NEXT_PUBLIC_ENGINE_URL?.trim().replace(/\/+$/, "") ?? "";
 
-const refetchAccount = () =>
-  store.dispatch(tradingApi.util.invalidateTags(["Orders", "Account", "OrderHistory"]));
 
-function toastKind(p: MobileNotificationPayload): ToastKind {
-  if (p.event === 'ORDER_REJECTED' || p.severity === 'CRITICAL') return "error";
-  if (p.severity === 'ACTION_REQUIRED') return "warning";
-  return p.event === 'ORDER_FILLED' ? "success" : "info";
-}
+const refetchAccount = () => {
+  store.dispatch(refreshTradingState());
+  store.dispatch(tradingApi.util.invalidateTags(["OrderHistory"]));
+};
 
 function show(p: MobileNotificationPayload) {
-  // title and description are written to be shown as-is. ORDER_REJECTED's reason is the venue's
-  // own free text: display it, never branch on it.
-  const reason = p.event === 'ORDER_REJECTED' && typeof p.data?.reason === "string" ? p.data.reason : "";
-  const text = [p.title, p.description].filter(Boolean).join(" — ");
-  useWorkspaceStore.getState().notify(reason && !text.includes(reason) ? `${text} (${reason})` : text, toastKind(p));
+  const notice=eventNotification(p);
+  useWorkspaceStore.getState().notify(notice.text,notice.kind,notice.options);
+  if(useWorkspaceStore.getState().tradeSounds){
+    const cue=eventSound(p,useTradeManagement.getState().results[String(p.data?.orderId)]);
+    if(cue)void playTradeSoundOnce(cue.key,cue.kind);
+  }
 }
 
 class MobileSocketService {
@@ -83,10 +86,12 @@ class MobileSocketService {
   }
 
   private open() {
+    const ENGINE_URL = useSessionServices.getState().binding?.engineBase;
     if (!this.token || !ENGINE_URL || typeof WebSocket === "undefined") return;
     const ws = new WebSocket(`${ENGINE_URL.replace(/^http/i, "ws")}/ws/mobile?token=${encodeURIComponent(this.token)}`);
     this.ws = ws;
     ws.onmessage = (event) => {
+      if (this.ws !== ws) return;
       let payload: any;
       try {
         payload = JSON.parse(String(event.data));
@@ -100,6 +105,7 @@ class MobileSocketService {
         // The token was refused; the server closes next. Retrying the same token cannot help.
         this.authRejected = true;
       } else if (payload?.type === "notification") {
+        if(payload.data && typeof payload.data==='object' && Number.isFinite(payload.tradingAccountId)) useOrderFlow.getState().receive(payload);
         show(payload as MobileNotificationPayload);
         refetchAccount();
       }

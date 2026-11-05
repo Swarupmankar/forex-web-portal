@@ -1,3 +1,4 @@
+import { cacheAccountServices, resolveSessionServices } from "@/lib/server/sessionServices";
 import { NextRequest, NextResponse } from "next/server";
 import { serverEnv, tradingStatus } from "@/lib/server/env";
 import {
@@ -23,7 +24,7 @@ export const dynamic = "force-dynamic";
 
 const BODY_LIMIT = 16 * 1024;
 const UPSTREAM_TIMEOUT_MS = 25_000;
-const QUERY_KEYS = ["symbol", "interval", "period", "end_date", "brokerId"];
+const QUERY_KEYS = ["symbol", "interval", "period", "end_date", "brokerId", "tf", "limit", "to"];
 const limiters = {
   login: new RateLimiter(RATE_LIMITS.login, 60_000),
   order: new RateLimiter(RATE_LIMITS.order, 60_000),
@@ -126,19 +127,30 @@ async function run(request: NextRequest, route: string, kind: RouteKind, reqId: 
   const valid = validateBody(route, method, body);
   if (!valid.ok) return notSent(422, valid.error, "invalid_body");
 
-  const { backend, engine } = serverEnv();
+  const config = serverEnv();
+  const { backend } = config;
   if (!backend) return notSent(503, MESSAGES.notConfigured, "not_configured");
 
   if (kind === "order") {
     // Never fall back to the backend: an order sent to the wrong host fails or reaches the wrong broker.
-    if (!engine) return notSent(503, MESSAGES.notConfigured, "engine_not_configured");
     const { mode, haltedSymbols } = tradingStatus();
     const allowed = gate(kind, route, valid.body, mode, haltedSymbols);
     if (!allowed.ok) return notSent(allowed.status, allowed.message, `mode_${mode}`);
   }
 
-  // Order calls go to the broker's trading engine; the path is appended to its routing base.
-  const target = kind === "order" && engine ? new URL(`${engine}/${route}`) : new URL(route, backend);
+  let binding;
+  if (kind === "order" || route === "chart/history" || route === "session/services") {
+    try { binding = await resolveSessionServices(request.headers.get("authorization"), config); }
+    catch (error) { return notSent(503, error instanceof Error ? error.message : MESSAGES.notConfigured, "account_routing_unavailable"); }
+  }
+  if (route === "session/services") return { status: 200, body: binding, outcome: "ok" };
+  if (route === "chart/history") {
+    const q = request.nextUrl.searchParams;
+    if (!/^[A-Z0-9._]{3,20}$/.test(q.get("symbol") || "") || !/^(M1|M5|M10|M15|M30|H1|H2|H4|D1|W1|MN1)$/.test(q.get("tf") || "") || !/^([1-9][0-9]{0,2}|1[0-4][0-9]{2}|1500)$/.test(q.get("limit") || "500") || (q.has("to") && !/^[1-9][0-9]{11,12}$/.test(q.get("to") || "")))
+      return notSent(422, "Invalid chart history request.", "invalid_history");
+  }
+  const target = kind === "order" ? new URL(`${binding!.engineBase}/${route}`)
+    : route === "chart/history" ? new URL(`${binding!.pricefeedBase}/history`) : new URL(route, backend);
   if (!mutation)
     for (const key of QUERY_KEYS) {
       const value = request.nextUrl.searchParams.get(key);
@@ -192,6 +204,11 @@ async function run(request: NextRequest, route: string, kind: RouteKind, reqId: 
       parsed = false;
     }
   const upstream = response.status;
+
+  // Account polling already verifies the broker's routes. Reuse that server-side
+  // response so the next order does not need another serial account request.
+  if (method === "GET" && route === "v1/users/trading/account" && (response.ok || upstream === 401 || upstream === 403))
+    cacheAccountServices(auth, response.ok && parsed ? data : null, config);
 
   if (kind === "order") {
     // 4xx is a definite rejection; 5xx or an unreadable success may have executed.

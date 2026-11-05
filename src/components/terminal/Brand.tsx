@@ -1,6 +1,6 @@
 export function Brand() {
   return (
-    <span className="terminal-brand">
+    <span className="terminal-brand" role="img" aria-label="Movement Markets — Web terminal">
       <svg viewBox="0 0 456 495" aria-hidden="true">
         <polygon
           points="4,4 164,125 164,370 4,491"

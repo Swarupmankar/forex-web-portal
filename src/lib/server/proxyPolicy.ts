@@ -50,6 +50,8 @@ export const READ_PATHS = new Set([
   "v1/users/order/orders",
   "v1/users/order/orders-history",
   "v1/chart/historical",
+  "chart/history",
+  "session/services",
   "users/user-profile",
 ]);
 export const MUTATIONS: Record<string, RegExp> = {
@@ -143,10 +145,12 @@ function exitOrder(b: Body): string | null {
 function modifyOrder(b: Body): string | null {
   if (typeof b.cancelOrder !== "boolean")
     return "cancelOrder must be true or false.";
-  if (b.sl !== undefined && !decimal(b.sl))
-    return "Stop loss must be 0 (remove) or a positive price.";
-  if (b.tp !== undefined && !decimal(b.tp))
-    return "Take profit must be 0 (remove) or a positive price.";
+  if (b.limitPrice !== undefined && !positive(b.limitPrice))
+    return "Pending entry must be a positive price.";
+  if (b.sl !== undefined && !positive(b.sl))
+    return "Stop loss must be a positive price. Existing levels cannot be removed.";
+  if (b.tp !== undefined && !positive(b.tp))
+    return "Take profit must be a positive price. Existing levels cannot be removed.";
   return null;
 }
 
@@ -176,7 +180,7 @@ const SCHEMAS: Record<
     check: placeOrder,
   },
   [EXIT_ORDER]: { keys: ["orderId", "exitLotSize"], check: exitOrder },
-  modify: { keys: ["cancelOrder", "sl", "tp"], check: modifyOrder },
+  modify: { keys: ["cancelOrder", "sl", "tp", "limitPrice"], check: modifyOrder },
   [HANDOFF]: { keys: ["code"], check: handoff },
   "v1/users/watchlist/add-stock": { keys: ["symbol", "stockId"], check: watchlistSymbol },
   "v1/users/watchlist/add-favorite": { keys: ["symbol", "stockId"], check: watchlistSymbol },

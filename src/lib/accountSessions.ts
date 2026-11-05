@@ -9,6 +9,7 @@ export interface TradingAccount {
   serverName: string;
   currency?: string;
   nickname?: string;
+  tradingAccountId?: number;
   // Last balance reported by the account service, for the account menu. Live figures come from the API.
   balance?: number;
   leverage?: number;
@@ -42,6 +43,7 @@ export function accountDetails(value: unknown, previous: TradingAccount): Tradin
     // The login identity stays stable, even when an account response omits it.
     kind: kind === 'unknown' ? previous.kind : kind,
     nickname: text(a.nickname) || previous.nickname,
+    tradingAccountId: amount(a.id) ?? previous.tradingAccountId,
     currency: /^[A-Z]{3}$/.test(currency) ? currency : previous.currency,
     serverName: text(a.serverName) || previous.serverName,
     brokerName: text(a.brokerName) || previous.brokerName,
@@ -137,7 +139,7 @@ export class AccountSessionVault {
         const seed = { username: text(a.username), brokerId: text(a.brokerId), serverId: text(a.serverId), brokerName: text(a.brokerName), serverName: text(a.serverName) };
         // Expired rows are restored without a token and can never authenticate.
         const expired = !s.token;
-        const restored = loginSession({ token: s.token || 'expired', account: { accountType: a.kind, nickname: a.nickname, currency: a.currency, balance: a.balance, leverage: a.leverage } }, seed);
+        const restored = loginSession({ token: s.token || 'expired', account: { id: a.tradingAccountId, accountType: a.kind, nickname: a.nickname, currency: a.currency, balance: a.balance, leverage: a.leverage } }, seed);
         this.sessions.set(restored.account.id, expired ? { token: '', account: { ...restored.account, expired: true } } : restored);
       }
       this.activeId = this.sessions.get(v.activeId)?.token ? v.activeId : '';

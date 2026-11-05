@@ -27,7 +27,7 @@ export function useInactivityLock() {
       // Every real account locks, so none can be resumed from the session-ended screen.
       accounts.accounts.filter((a) => a.kind !== "demo" && !a.expired).forEach((a) => accounts.expire(a.id));
       if (accounts.activeId) accounts.expire(accounts.activeId);
-      useUIStore.setState({ isAuthenticated: false, tradingAccountNo: "", oneClickTrading: false });
+      useUIStore.setState({ isAuthenticated: false, tradingAccountNo: "", oneClickTrading: false, oneClickClose: false });
       useUIStore.getState().endSession("Locked after 15 minutes of inactivity. Open your account again from the client portal to continue.");
     };
     ACTIVITY.forEach((e) => window.addEventListener(e, touch, { passive: true }));

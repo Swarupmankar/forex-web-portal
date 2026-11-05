@@ -29,9 +29,11 @@ async function load() {
   const nonce = `\n// load ${++loads}`;
   const policy = dataUrl(transpile("../src/lib/server/proxyPolicy.ts") + nonce);
   const env = dataUrl(replaceImport(transpile("../src/lib/server/env.ts"), "./proxyPolicy", policy) + nonce);
+  const services = dataUrl(transpile("../src/lib/server/sessionServices.ts") + nonce);
   const route = (path) => {
     let code = transpile(path);
     code = replaceImport(code, "next/server", nextServerShim);
+    code = replaceImport(code, "@/lib/server/sessionServices", services);
     code = replaceImport(code, "@/lib/server/env", env);
     code = replaceImport(code, "@/lib/server/proxyPolicy", policy);
     return import(dataUrl(code + nonce));
@@ -73,6 +75,7 @@ test.beforeEach(() => {
   logs = [];
   upstream = async () => new Response(JSON.stringify({ ok: true }), { status: 200 });
   globalThis.fetch = async (url, init) => {
+    if (String(url) === 'https://api.example.com/v1/users/trading/account') return new Response(JSON.stringify({ account: { brokerId: 2, serverId: 7, accountType: 'REAL', Server: { id: 7, accountType: 'REAL', url: process.env.NEXT_PUBLIC_ENGINE_URL, priceFeedUrl: process.env.NEXT_PUBLIC_PRICEFEED_URL } } }));
     calls.push({ url: String(url), init });
     return upstream(url, init);
   };
@@ -92,6 +95,7 @@ function request(method, path, { body, headers = {}, query = "" } = {}) {
     method,
     headers: {
       host: "terminal.example",
+      authorization: "Bearer route-test-account",
       "x-forwarded-for": `203.0.113.${++ipCounter % 250}`,
       ...(method === "GET" ? {} : { origin: ORIGIN }),
       ...(text === undefined ? {} : { "content-type": "application/json", "content-length": String(Buffer.byteLength(text)) }),
@@ -141,6 +145,21 @@ test("reads forward only allowlisted query keys and pass the backend response th
   assert.equal(init.headers.get("authorization"), "Bearer t0k");
   assert.equal(init.headers.get("x-request-id"), res.headers.get("x-request-id"));
   assert.equal(init.redirect, "error");
+});
+
+test('a verified account GET warms order routing without another serial discovery request', async () => {
+  const {proxy}=await load();const requests=[];
+  globalThis.fetch=async(url,init)=>{
+    requests.push({url:String(url),method:init.method??'GET'});
+    return Response.json(String(url).endsWith('/trading/account')
+      ? {id:77,tradingUsername:'1234',accountType:'DEMO',serverUrl:process.env.NEXT_PUBLIC_ENGINE_URL,priceFeedUrl:process.env.NEXT_PUBLIC_PRICEFEED_URL}
+      : {orderId:42,accepted:true},{status:String(url).endsWith('/place-order')?202:200});
+  };
+  assert.equal((await send(proxy,'GET','v1/users/trading/account')).status,200);
+  const placed=await send(proxy,'POST',PLACE,{body:order});
+  assert.equal(placed.status,202);assert.equal(placed.body.accepted,true);
+  assert.deepEqual(requests.map(r=>r.method),['GET','POST']);
+  assert.equal(requests[1].url,process.env.NEXT_PUBLIC_ENGINE_URL+'/'+PLACE);
 });
 
 test("mutations from another origin are 403", async () => {
@@ -216,7 +235,7 @@ test("the kill switch applies on the next request without reloading", async () =
   assert.equal(blocked.status, 503);
   assert.match(blocked.body.message, /^Close-only mode/);
   assert.equal((await send(proxy, "POST", EXIT, { body: { orderId: "5", exitLotSize: "0.05" } })).status, 200);
-  assert.equal((await send(proxy, "PUT", "v1/users/order/modify/5", { body: { cancelOrder: false, sl: "0", tp: "1.2" } })).status, 200);
+  assert.equal((await send(proxy, "PUT", "v1/users/order/modify/5", { body: { cancelOrder: false, sl: "1.0", tp: "1.2" } })).status, 200);
   const res = await status.GET();
   const json = await res.json();
   assert.equal(json.mode, "close-only");
@@ -366,4 +385,22 @@ test("production on the development feed reports halted", async () => {
   const { status, proxy } = await load();
   assert.equal((await (await status.GET()).json()).mode, "halted");
   assert.equal((await send(proxy, "POST", PLACE, { body: order })).status, 503);
+});
+
+test("chart history uses the account feed path and forwards a bounded older-page cursor", async () => {
+  const { proxy } = await load();
+  upstream = async () => new Response(JSON.stringify({candles: []}));
+  const r = await send(proxy, 'GET', 'chart/history', {query:'?symbol=XAUUSD&tf=H4&limit=500&to=1793264400000&host=https://evil.example'});
+  assert.equal(r.status,200);
+  assert.equal(calls[0].url,'https://feed.example.com/history?symbol=XAUUSD&tf=H4&limit=500&to=1793264400000');
+  const invalid = await send(proxy,'GET','chart/history',{query:'?symbol=XAUUSD&tf=H4&limit=999999'});
+  assert.equal(invalid.status,422); assert.equal(calls.length,1);
+});
+test("pending repricing sends decimal limitPrice while rejecting unknown modification fields", async () => {
+  const {proxy}=await load();
+  const body={cancelOrder:false,limitPrice:'3998.25',sl:'3990'};
+  assert.equal((await send(proxy,'PUT','v1/users/order/modify/42',{body})).status,200);
+  assert.deepEqual(JSON.parse(calls[0].init.body),body);
+  assert.equal((await send(proxy,'PUT','v1/users/order/modify/42',{body:{...body,brokerId:99}})).status,422);
+  assert.equal(calls.length,1);
 });

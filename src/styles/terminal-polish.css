@@ -1,0 +1,160 @@
+/* Interaction polish: animate responses to actions, never live price coordinates. */
+.terminal-app .toast-stack {top:62px;bottom:auto;left:12px;right:auto;transform:none;width:320px;max-width:calc(100vw - 24px);gap:6px;align-items:stretch}
+.terminal-app .toast-stack .terminal-toast {width:100%;max-width:none;padding:10px 12px;gap:8px;align-items:flex-start;border-radius:8px;animation:none}
+.terminal-app .toast-stack .terminal-toast>svg {width:16px;height:16px;flex:none;margin-top:2px}
+.toast-copy {flex:1;min-width:0;font-size:12px;line-height:1.45}
+.toast-copy strong {display:block;font-weight:600;margin-bottom:2px;color:var(--mm-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toast-copy>span {display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;color:var(--mm-ink-2)}
+.terminal-app .toast-stack .terminal-toast .icon-button {width:24px;height:24px;min-height:24px;flex:none;margin:-3px -5px 0 0}
+.toast-recent {display:flex;align-items:center;gap:6px;align-self:flex-start;pointer-events:auto;min-height:28px;padding:4px 9px;border:1px solid var(--mm-line);border-radius:6px;background:var(--mm-surface);color:var(--mm-ink-2);font-size:11px;box-shadow:var(--mm-shadow-toast)}
+.toast-recent svg {width:13px;height:13px}.toast-recent>span {font-variant-numeric:tabular-nums;font-weight:600;color:var(--mm-ink)}
+.notification-button {position:relative;flex:none}
+.notification-button>span {position:absolute;top:-1px;right:-3px;min-width:13px;padding:1px 3px;border-radius:6px;background:var(--mm-surface-2);color:var(--mm-ink-2);border:1px solid var(--mm-line);font-size:9px;line-height:12px}
+.notification-button>span.needs-attention {color:var(--mm-neg);border-color:var(--mm-neg)}
+.notification-history {width:min(460px,calc(100vw - 24px))}
+.notification-history-heading {display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11px;color:var(--mm-ink-2);margin-bottom:12px;flex-wrap:wrap}
+.notification-history-list {padding:0;margin:0;list-style:none;max-height:min(420px,60dvh);overflow:auto;overscroll-behavior:contain}
+.notification-history-list li {display:flex;gap:9px;padding:12px 2px;border-bottom:1px solid var(--mm-line-soft);font-size:12px;line-height:1.5}
+.notification-history-list li>svg {width:16px;height:16px;margin-top:2px;flex:none;color:var(--accent-ink)}
+.notification-history-list li.is-error>svg {color:var(--mm-neg)}.notification-history-list li.is-warning>svg {color:var(--mm-warn)}.notification-history-list li.is-success>svg {color:var(--mm-pos)}
+.notification-history-list li>div {flex:1;min-width:0;overflow-wrap:anywhere}.notification-history-list li p {margin:3px 0;color:var(--mm-ink-2)}
+.notification-history-list time {font-size:10px;color:var(--mm-ink-2);font-variant-numeric:tabular-nums}
+.notification-history-list .icon-button {width:28px;height:28px;flex:none}
+@media (max-width:759px) {.terminal-app .toast-stack {top:100px;width:min(320px,calc(100vw - 24px))}}
+@media (pointer:coarse) {.terminal-app .toast-stack .terminal-toast .icon-button {min-width:36px;min-height:36px}.toast-recent{min-height:36px}}
+@media (prefers-reduced-motion:no-preference) {.terminal-app .toast-stack .terminal-toast {animation:terminal-content-enter 140ms ease-out}}
+
+.terminal-single-page {
+  --terminal-motion-quick: 120ms;
+  --terminal-motion-panel: 180ms;
+  --terminal-motion-ease: cubic-bezier(.2,.7,.2,1);
+}
+
+/* The input's old outline was clipped into two dark vertical bars. Keep keyboard
+   focus around the whole control and individual button focus inside its bounds. */
+.terminal-single-page .volume-control {transition:border-color var(--terminal-motion-quick),box-shadow var(--terminal-motion-quick)}
+.terminal-single-page .volume-control input {flex:1;width:0;background:transparent;box-shadow:none}
+.terminal-single-page .volume-control input:focus-visible {outline:none}
+.terminal-single-page .volume-control:has(input:focus-visible) {outline:2px solid var(--accent-ink);outline-offset:2px}
+.terminal-single-page .volume-control:focus-within {border-color:var(--mm-line-strong)}
+.terminal-single-page .volume-control button {border-radius:5px}
+.terminal-single-page .volume-control button:focus-visible {outline-offset:-4px}
+.terminal-single-page .volume-control button:hover:not(:disabled) {background:var(--mm-line-soft);color:var(--mm-ink)}
+.terminal-single-page .volume-control button:active:not(:disabled) {background:var(--mm-line);color:var(--mm-ink)}
+.terminal-single-page .workspace-ticket .order-scroll {scroll-padding-block:10px}
+.terminal-single-page .workspace-ticket .risk-heading {border-color:var(--mm-line-soft)}
+.terminal-single-page .workspace-ticket .ticket-extra {border:0;margin-top:10px;padding:0}
+.terminal-single-page .ticket-extra>summary {display:flex;align-items:center;justify-content:space-between;gap:8px;list-style:none;border-radius:5px;padding:0 4px}
+.terminal-single-page .ticket-extra>summary::-webkit-details-marker {display:none}
+.terminal-single-page .ticket-extra>summary::after {content:'';width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);margin-right:4px;transition:transform var(--terminal-motion-quick)}
+.terminal-single-page .ticket-extra[open]>summary::after {transform:rotate(225deg)}
+.terminal-single-page .ticket-extra>summary:hover {color:var(--mm-ink);background:var(--mm-surface-2)}
+.terminal-single-page .ticket-extra>summary:focus-visible {outline:2px solid var(--accent-ink);outline-offset:1px}
+.terminal-single-page .ticket-extra .ticket-summary {margin-top:5px}
+
+/* One unobtrusive credit; the full notice is one click away. */
+.terminal-single-page .chart-attribution {gap:4px;flex:none;margin-left:auto}
+.terminal-single-page .chart-attribution>a {text-decoration:none;font-size:10px}
+.terminal-single-page .chart-attribution>a:hover {text-decoration:underline}
+.chart-info-button {display:grid;place-items:center;width:24px;height:24px;flex:none;border-radius:4px;color:var(--mm-ink-2)}
+.chart-info-button svg {width:13px;height:13px}
+.chart-info-button:hover {background:var(--mm-surface-2);color:var(--mm-ink)}
+.chart-info-dialog {width:min(440px,calc(100vw - 24px))}
+.chart-info-dialog .dialog-body {font-size:13px;line-height:1.7}
+.chart-info-dialog .chart-copyright {margin-block:20px;color:var(--mm-ink-2);font-size:12px}
+.chart-info-links {display:flex;flex-wrap:wrap;gap:10px 20px}
+.chart-info-links a {text-decoration:underline;text-underline-offset:3px}
+.terminal-single-page .interactive-chart-caption>span {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Both selected and secondary labels share the same price-centred anchor. */
+.terminal-single-page .trade-marker {transform:translate(-100%,-50%);border-radius:6px;overflow:hidden;padding:0 7px 0 0;transition:border-color var(--terminal-motion-quick),background-color var(--terminal-motion-quick),box-shadow var(--terminal-motion-quick)}
+.terminal-single-page .trade-marker-kind {border:0;border-radius:5px 0 0 5px;padding-inline:6px}
+.terminal-single-page .trade-marker.entry.is-buy {--marker-tone:var(--mm-pos)}
+.terminal-single-page .trade-marker.entry.is-sell {--marker-tone:var(--mm-neg)}
+.terminal-single-page .trade-marker.entry.is-pending {--marker-tone:var(--mm-warn)}
+.terminal-single-page .trade-marker.entry .trade-marker-kind {color:var(--marker-tone,var(--mm-ink-2));background:color-mix(in srgb,var(--marker-tone,var(--mm-ink-2)) 8%,var(--mm-surface))}
+.terminal-single-page .trade-marker.entry.is-selected {border-color:var(--marker-tone,var(--mm-line-strong));box-shadow:0 1px 5px #0002}
+.terminal-single-page .trade-marker:hover {box-shadow:0 2px 8px #0002;border-color:var(--mm-ink-2)}
+.terminal-single-page .trade-marker .marker-volume {color:var(--mm-ink-2)}
+.terminal-single-page .trade-marker .marker-projection {color:var(--mm-ink-2)}
+.terminal-single-page .trade-marker.is-dragging {transition:none;border-width:1px;outline:1px solid currentColor;outline-offset:0}
+.terminal-single-page .trade-marker.is-dragging.is-invalid {border-color:var(--mm-neg);outline-color:var(--mm-neg)}
+.terminal-single-page .trade-marker:focus-visible {outline-offset:2px}
+.chart-trade-list button {align-items:center;gap:14px;border-bottom-color:var(--mm-line-soft);border-radius:5px;padding:10px 8px}
+.chart-trade-list button:hover {background:var(--mm-surface-2)}
+.chart-trade-list .trade-list-copy {display:flex;flex-direction:column;gap:3px;text-align:left}
+.chart-trade-list .trade-list-copy small {font-size:11px;color:var(--mm-ink-2)}
+.chart-trade-list .trade-list-value {font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* Quick execution remains visible and distinct from opening the full ticket. */
+.terminal-single-page .chart-order-actions {flex-wrap:wrap;row-gap:4px}
+.one-tap-toggle {display:flex;align-items:center;gap:4px;min-height:30px;padding:4px 7px;border:1px solid var(--mm-line);border-radius:5px;font-size:10px;white-space:nowrap;color:var(--mm-ink-2)}
+.one-tap-toggle svg {width:13px;height:13px}
+.one-tap-toggle[aria-pressed="true"],.quick-close-toggle[aria-pressed="true"] {background:var(--accent-wash);border-color:var(--accent-ink);color:var(--accent-ink)}
+.terminal-single-page .activity-actions .quick-close-toggle {display:inline-flex;align-items:center;gap:4px;width:auto;min-width:30px;padding:4px 7px;font-size:10px;white-space:nowrap;border:1px solid var(--mm-line);border-radius:5px}
+.terminal-single-page .activity-actions .quick-close-toggle[aria-pressed="true"] {border-color:var(--accent-ink)}
+.quick-trade-issue {font-size:10px;color:var(--mm-ink-2);padding:0 8px 5px}
+.quick-lots {display:flex;flex-direction:column;width:58px;gap:0;flex:none;font-size:9px;line-height:1.1;color:var(--mm-ink-2)}
+.quick-lots input {height:26px;min-height:26px;padding:3px 4px;text-align:center;font-size:12px;border-radius:4px}
+.terminal-single-page .chart-order-start>span {display:flex;align-items:center;justify-content:center;gap:4px}
+.terminal-single-page .chart-order-start>span svg {width:12px;height:12px}
+.ticket-confirmed-inline.is-working {background:var(--mm-surface-2);border-color:var(--mm-line);color:var(--mm-ink-2)}
+.ticket-confirmed-inline.is-uncertain {background:var(--mm-surface-2);border-color:var(--mm-warn);color:var(--mm-ink)}
+.ticket-confirmed-inline>strong {display:flex;align-items:center;gap:6px}
+.ticket-confirmed-inline>strong svg {width:13px;height:13px}
+.ticket-confirmed-inline small {font-size:10px;line-height:1.5}
+.row-working {display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--mm-ink-2);white-space:nowrap}
+.row-working svg {width:13px;height:13px}
+.terminal-single-page .position-close {min-height:28px;border-radius:5px;font-size:11px}
+.terminal-single-page .position-close:hover:not(:disabled) {color:var(--mm-neg);border-color:var(--mm-neg)}
+.terminal-single-page .row-reduce {color:var(--mm-ink-2)}
+@container chart (max-width:600px) {
+  .terminal-single-page .chart-order-actions[data-one-tap="true"] {width:100%;padding-top:0}
+  .terminal-single-page .chart-order-actions[data-one-tap="true"] .chart-order-start {flex:1}
+}
+
+@keyframes terminal-panel-enter {from{opacity:0;transform:translateX(6px)}to{opacity:1;transform:translateX(0)}}
+@keyframes terminal-content-enter {from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+@keyframes terminal-label-enter {from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:no-preference) {
+  .terminal-single-page .workspace-ticket:not([hidden])>.order-panel {animation:terminal-panel-enter var(--terminal-motion-panel) var(--terminal-motion-ease)}
+  .terminal-single-page .risk-fields,.terminal-single-page .pending-fields,.terminal-single-page .ticket-confirmed-inline,.terminal-single-page .ticket-extra[open]>.ticket-summary,.terminal-single-page .ticket-extra[open]>.risk-size {animation:terminal-content-enter var(--terminal-motion-panel) var(--terminal-motion-ease)}
+  .terminal-single-page .toolbar-menu[open]>.toolbar-menu-content {animation:terminal-content-enter var(--terminal-motion-quick) var(--terminal-motion-ease)}
+  .terminal-single-page .trade-marker,.terminal-single-page .chart-pending-handle {animation:terminal-label-enter var(--terminal-motion-quick) ease-out}
+}
+@media(prefers-reduced-motion:reduce) {
+  .terminal-single-page .volume-control,.terminal-single-page .trade-marker,.terminal-single-page .ticket-extra>summary::after {transition:none}
+}
+
+/* Activity tools stay in a single input row, regardless of generic form label rules. */
+.terminal-single-page .workspace-activity label.activity-search {display:flex;flex-direction:row;align-items:center;gap:7px;height:32px;min-height:32px;margin:0;padding:0 8px;flex:0 1 240px;min-width:150px}
+.terminal-single-page .workspace-activity .activity-search>svg {position:static;display:block;flex:none;width:14px;height:14px;margin:0}
+.terminal-single-page .workspace-activity .activity-search input {flex:1;width:0;min-width:0;height:30px;min-height:30px;padding:0;margin:0;line-height:normal;border:0;box-shadow:none;background:transparent}
+.terminal-single-page .workspace-activity .activity-search:focus-within {outline:2px solid var(--accent-ink);outline-offset:1px}
+.terminal-single-page .workspace-activity .activity-search input:focus-visible {outline:none}
+.terminal-single-page .workspace-activity .activity-query-bar {flex-wrap:wrap}
+.terminal-single-page .workspace-activity .activity-query-bar>select {max-width:180px;min-width:0}
+.terminal-single-page .workspace-activity .activity-result-count {white-space:nowrap}
+.terminal-single-page .workspace-activity .orders-table td:first-child>small {white-space:normal;max-width:28ch;overflow-wrap:anywhere}
+.activity-symbol {min-width:0;max-width:20ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.history-trade-row {cursor:pointer}.history-trade-row:hover {background:var(--mm-surface-2)}
+.history-trade-row:focus-visible {outline:2px solid var(--accent-ink);outline-offset:-2px}
+.terminal-single-page .activity-actions .activity-maximize {display:inline-flex;align-items:center;gap:4px;width:auto;padding:4px 7px;font-size:10px;white-space:nowrap}
+.focused-activity-title {font-size:12px;font-weight:600;white-space:nowrap;color:var(--mm-ink-2)}
+.terminal-single-page .unified-workspace[data-activity-only="true"] {display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:0;overflow:hidden}
+.terminal-single-page .unified-workspace[data-activity-only="true"]>:not(.workspace-activity) {display:none}
+.terminal-single-page .unified-workspace[data-activity-only="true"]>.workspace-activity {grid-area:1/1;height:100%;min-height:0}
+.trade-details-dialog {width:min(580px,calc(100vw - 24px))}
+.trade-details-dialog h2 {overflow-wrap:anywhere;min-width:0}
+.trade-details-dialog .trade-detail-heading strong {overflow-wrap:anywhere}
+.trade-details-dialog .trade-detail-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 24px}
+.trade-details-dialog .trade-detail-grid>div {min-width:0}
+.trade-details-dialog .trade-detail-grid dd {overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.trade-details-dialog .trade-inspector-actions {display:flex;flex-wrap:wrap;gap:8px}
+.alert-current-price {display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:8px 0 16px;font-size:12px;color:var(--mm-ink-2)}
+.alert-current-price strong {font-variant-numeric:tabular-nums;color:var(--mm-ink)}
+.sound-preview {margin-bottom:12px}
+.terminal-single-page .header-actions .header-sound {display:inline-flex}
+@media (max-width:1100px) {.focused-activity-title {display:none}}
+@media (max-width:759px) {.terminal-single-page .workspace-activity label.activity-search {flex-basis:100%;width:100%}.terminal-single-page .activity-maximize>span {display:none}.terminal-single-page .header-actions .header-sound {display:none}}
+@media (max-width:480px) {.trade-details-dialog .trade-detail-grid {grid-template-columns:minmax(0,1fr)}}

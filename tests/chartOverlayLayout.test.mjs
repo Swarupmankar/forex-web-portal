@@ -6,9 +6,32 @@ import { readFileSync } from 'node:fs';
 const code = ts.transpileModule(readFileSync(new URL('../src/lib/chartOverlayLayout.ts', import.meta.url), 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 }).outputText;
-const { layoutChartOverlays } = await import('data:text/javascript;base64,' + Buffer.from(code).toString('base64'));
+const { layoutChartOverlays, managementPreviewLevels } = await import('data:text/javascript;base64,' + Buffer.from(code).toString('base64'));
 const anchor = (id, y, kind = 'entry', selected = false) => ({ id, y, kind, selected });
 const visibleIds = layout => layout.labels.flatMap(label => label.members.map(member => member.id)).sort();
+
+test('symbols without trades or an edit preview render without preview lines', () => {
+  assert.deepEqual(managementPreviewLevels(undefined, undefined), []);
+  assert.deepEqual(managementPreviewLevels(undefined, 'position-1'), []);
+  const preview = { id: 'position-1', changes: { sl: 3900 } };
+  assert.deepEqual(managementPreviewLevels(preview, undefined), []);
+  assert.deepEqual(managementPreviewLevels(preview, 'other-symbol-position'), []);
+});
+
+test('switching between a traded symbol and an empty symbol isolates edit previews', () => {
+  const preview = { id: 'position-1', changes: { sl: 3900, tp: 4100, limitPrice: 4000 } };
+  const levels = managementPreviewLevels(preview, 'position-1');
+  assert.deepEqual(levels.map(l => [l.id, l.price, l.title]), [
+    ['preview-sl', 3900, 'Preview SL'], ['preview-tp', 4100, 'Preview TP'], ['preview-limitPrice', 4000, 'Preview entry'],
+  ]);
+  assert.deepEqual(managementPreviewLevels(preview, undefined), []);
+  assert.deepEqual(managementPreviewLevels(preview, 'position-1'), levels);
+  assert.deepEqual(managementPreviewLevels(undefined, undefined), []);
+});
+
+test('cleared or invalid protection values do not produce price lines', () => {
+  assert.deepEqual(managementPreviewLevels({ id: 'p', changes: { sl: 0, tp: NaN, limitPrice: -1 } }, 'p'), []);
+});
 
 test('selected entry and both exits stay visible before background trades', () => {
   const result = layoutChartOverlays([
@@ -80,4 +103,18 @@ test('unavailable geometry is safe and input objects are not mutated', () => {
   assert.equal(layoutChartOverlays(input, NaN).labels.length, 0);
   assert.equal(layoutChartOverlays(input, 300).labels.length, 1);
   assert.equal(input[0].y, 100);
+});
+
+
+test('nearby pending orders and opposite directions never merge into a position label',()=>{
+  const result=layoutChartOverlays([
+    {...anchor('open-a',100),group:'OPEN:BUY:MARKET'},
+    {...anchor('open-b',102),group:'OPEN:BUY:MARKET'},
+    {...anchor('pending',104),group:'PENDING:BUY:LIMIT'},
+    {...anchor('sell',106),group:'OPEN:SELL:MARKET'},
+  ],300);
+  assert.deepEqual(result.labels.find(label=>label.members.length>1).members.map(member=>member.id),['open-a','open-b']);
+  assert.ok(result.labels.some(label=>label.id==='pending'));
+  assert.ok(result.labels.some(label=>label.id==='sell'));
+  assert.equal(result.overflowCount,0);
 });

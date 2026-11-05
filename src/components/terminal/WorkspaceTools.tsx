@@ -1,4 +1,5 @@
 "use client";
+import { useMarketDisplay } from '@/hooks/useMarketDisplay';
 import { useEffect, useState } from "react";
 import {
   Bell,
@@ -6,48 +7,34 @@ import {
   Info,
   Check,
   X,
-  LayoutGrid,
-  ChartNoAxesCombined,
-  List,
-  ArrowLeftRight,
 } from "lucide-react";
 import { Dialog } from "./Dialog";
 import { ToastStack } from "./ToastStack";
 import { isQuoteStale } from "@/lib/freshness";
-import { useWorkspaceStore, WorkspacePanel } from "@/store/useWorkspaceStore";
+import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import {useChartSettings} from "@/store/useChartSettings";
 import { useUIStore } from "@/store/useUIStore";
 import { usePriceStore } from "@/store/usePriceStore";
-import { formatPrice, PREVIEW_FEED, instrument } from "@/lib/market";
+import { usePriceAlerts } from "@/hooks/usePriceAlerts";
+import { showActivity } from "@/lib/tradingWorkflow";
+import { playTradeSound, unlockTradeSound } from "@/lib/tradeSound";
 import { usePracticeStore } from "@/store/usePracticeStore";
 export function WorkspaceTools() {
+  const { formatPrice, instrument } = useMarketDisplay();
   const mode=usePracticeStore(s=>s.mode);
   const demoQuotes=usePracticeStore(s=>s.quotes);
   const w = useWorkspaceStore();
   const chart = useChartSettings();
-  const symbol = useUIStore((s) => s.activeSymbol),
-    setSidebar = useUIStore((s) => s.setSidebarTab);
+  const symbol = useUIStore((s) => s.activeSymbol);
   const [target, setTarget] = useState("");
   const [direction, setDirection] = useState<"above" | "below">("above");
   const livePrices = usePriceStore((s) => s.prices);
   const prices = mode === "practice" ? demoQuotes : livePrices;
   const [error, setError] = useState("");
-  useEffect(() => {
-    if (mode !== "practice" && PREVIEW_FEED) return;
-    w.alerts
-      .filter((a) => !a.triggeredAt && (a.mode || "connected") === mode)
-      .forEach((a) => {
-        const q = prices[a.symbol];
-        if (!q || isQuoteStale(q)) return;
-        if (a.direction === "above" ? q.bid >= a.target : q.bid <= a.target) {
-          w.triggerAlert(a.id);
-          w.notify(
-            `${a.symbol} reached ${formatPrice(q.bid, a.symbol)}. Your ${a.direction} alert was triggered.`,
-            "info",
-          );
-        }
-      });
-  }, [prices, mode, w.alerts, w.triggerAlert, w.notify]);
+  usePriceAlerts();
+  const currentQuote=prices[symbol];
+  const currentBid=currentQuote&&!isQuoteStale(currentQuote)?currentQuote.bid:undefined;
+  useEffect(()=>{if(w.alertOpen){setTarget('');setError('');}},[w.alertOpen,symbol]);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (
@@ -60,43 +47,17 @@ export function WorkspaceTools() {
         return;
       if (e.key === "/") {
         e.preventDefault();
-        setSidebar("add-symbols");
-        w.setPanel("markets");
-        w.setFocus(false);
-        requestAnimationFrame(() =>
-          document.getElementById("market-search")?.focus(),
-        );
+        useWorkspaceStore.getState().setInstrumentPickerOpen(true);
       }
       if (e.key === "?") w.setHelpOpen(true);
       if (e.key.toLowerCase() === "a") w.setAlertOpen(true);
-      if (e.key === "Escape") w.setFocus(false);
+      if (e.key === "Escape") { w.setFocus(false); w.setActivityMaximized(false); useUIStore.getState().setPickingEntry(false); }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [setSidebar, w.setPanel, w.setFocus, w.setHelpOpen, w.setAlertOpen]);
-  const panels: [WorkspacePanel, string, typeof Bell][] = [
-    ["markets", "Markets", LayoutGrid],
-    ["chart", "Chart", ChartNoAxesCombined],
-    ["trade", "Trade", ArrowLeftRight],
-    ["activity", "Activity", List],
-  ];
+  }, [w.setPanel, w.setFocus, w.setHelpOpen, w.setAlertOpen, w.setActivityMaximized]);
   return (
     <>
-      <nav className="mobile-workspace-nav" aria-label="Terminal workspace">
-        {panels.map(([id, label, Icon]) => (
-          <button
-            key={id}
-            aria-current={w.panel === id ? "page" : undefined}
-            onClick={() => {
-              w.setFocus(false);
-              w.setPanel(id);
-            }}
-          >
-            <Icon />
-            {label}
-          </button>
-        ))}
-      </nav>
       <ToastStack />
       {w.helpOpen && (
         <Dialog title="Keyboard shortcuts" onClose={() => w.setHelpOpen(false)}>
@@ -138,10 +99,11 @@ export function WorkspaceTools() {
           onClose={() => w.setSettingsOpen(false)}
         >
           <p className="muted">
-            With one-click on, Buy, Sell and Close act immediately in Practice. Connected accounts ask for separate consent each session.
+            Enable one-tap trading beside the chart quotes. The lightning control above Positions separately enables immediate closing. Use the ticket for SL/TP, pending orders and partial closes.
           </p>
+          <button className="button button-outline sound-preview" onClick={()=>{unlockTradeSound();void playTradeSound("filled");}}>Play test sound</button>
+          <label className="preference-row density-preference"><span>Interface size</span><select aria-label="Interface size" value={w.density} onChange={e=>w.setDensity(e.target.value as 'compact'|'comfortable')}><option value="compact">Compact</option><option value="comfortable">Comfortable</option></select></label>
           {[
-            ["One-click practice trading", w.oneClickPractice, w.setOneClickPractice],
             ["Chart grid", w.showGrid, w.setGrid],
             ["Bid and ask lines", chart.showBidAsk, chart.setShowBidAsk],
             ["Bar close countdown", chart.showCountdown, chart.setShowCountdown],
@@ -184,6 +146,7 @@ export function WorkspaceTools() {
           <p className="muted">
             Notify me when {instrument(symbol).name} reaches:
           </p>
+          <p className="alert-current-price">Current Bid <strong>{formatPrice(currentBid,symbol)}</strong>{currentBid==null&&<span>Waiting for the price feed</span>}</p>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -192,11 +155,12 @@ export function WorkspaceTools() {
                 setError("Enter a price greater than zero.");
                 return;
               }
+              w.notify("Price alert saved. Watching the Bid price.", "info");
               w.addAlert({ symbol, target: n, direction, mode });
               w.setAlertOpen(false);
               setTarget("");
               setError("");
-              w.notify("Price alert saved in this browser.");
+              showActivity("alerts");
             }}
           >
             <div className="form-row">
@@ -208,8 +172,8 @@ export function WorkspaceTools() {
                     setDirection(e.target.value as "above" | "below")
                   }
                 >
-                  <option value="above">Price rises above</option>
-                  <option value="below">Price falls below</option>
+                  <option value="above">Bid is at or above</option>
+                  <option value="below">Bid is at or below</option>
                 </select>
               </label>
               <label>
@@ -225,6 +189,7 @@ export function WorkspaceTools() {
                 />
               </label>
             </div>
+            {currentBid!=null&&Number(target)>0&&(direction==="above"?currentBid>=Number(target):currentBid<=Number(target))&&<p className="helper">This price condition is already met. The alert will trigger immediately.</p>}
             {error && (
               <p className="form-error" role="alert">
                 {error}

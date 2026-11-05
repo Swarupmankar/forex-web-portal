@@ -1,10 +1,12 @@
 'use client';
+import { candleStart, FEED_TIMEFRAMES } from '@/lib/chartTime';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { createChart, ColorType, CrosshairMode, LineStyle, type AutoscaleInfo, type IChartApi, type ISeriesApi, type IPriceLine, type UTCTimestamp, type LogicalRange } from 'lightweight-charts';
 import { applyTick, reconcileBars, MAX_BARS, type Candle, type LiveCandles } from '@/lib/chart';
 import { type StudyKey, type Studies } from '@/lib/indicators';
 import { createStudyCache } from '@/lib/streamingStudies';
 import { subscribeCandleTicks, type CandleSource } from '@/services/candleFeed';
+import { readChartPalette, FALLBACK_CHART_PALETTE, type ChartPalette } from '@/lib/chartPalette';
 import type { PriceTick } from '@/types/trading';
 export type ChartLevel = {
     id: string;
@@ -13,6 +15,7 @@ export type ChartLevel = {
     color: string;
     selected?: boolean;
     kind?: 'entry' | 'sl' | 'tp';
+    pending?: boolean;
 };
 export type ChartEngine = {
     alive: () => boolean;
@@ -42,32 +45,12 @@ function firstIndexFrom(bars: Candle[], time: number) {
 }
 // Study points per bar; bars without a value (warm-up) get whitespace so both panes keep the same bar indexes.
 const studyPoint = (time: number, value: number | undefined) => value === undefined ? { time: time as UTCTimestamp } : { time: time as UTCTimestamp, value };
-type Palette = { up: string; down: string; muted: string };
-const FALLBACK_PALETTE: Record<'dark' | 'light', Palette> = { dark: { up: '#16a773', down: '#e05260', muted: '#a0a5a1' }, light: { up: '#16a773', down: '#e05260', muted: '#66717e' } };
-// Theme colours for the bid/ask lines from the page's CSS tokens, normalised through a canvas
-// to hex/rgba because the chart cannot parse every CSS colour syntax.
-function readPalette(theme: 'dark' | 'light'): Palette {
-    const fallback = FALLBACK_PALETTE[theme];
-    const ctx = typeof document === 'undefined' ? null : document.createElement('canvas').getContext('2d');
-    if (!ctx)
-        return fallback;
-    const styles = getComputedStyle(document.documentElement);
-    const read = (name: string, color: string) => {
-        const raw = styles.getPropertyValue(name).trim();
-        if (!raw)
-            return color;
-        ctx.fillStyle = color;
-        ctx.fillStyle = raw; // an invalid value leaves the fallback in place
-        return String(ctx.fillStyle);
-    };
-    return { up: read('--mm-pos', fallback.up), down: read('--mm-neg', fallback.down), muted: read('--mm-ink-2', fallback.muted) };
-}
 type ChartOps = {
     load: (history: Candle[], identity: string) => void;
     refreshStudies: () => void;
     showQuote: (bid: number | undefined, ask: number | undefined, visible: boolean, stale: boolean) => void;
 };
-export function useChartEngine({ host, rsiHost, candles, symbol, source, identity, interval, digits, kind, theme, grid, studies, quote, showBidAsk, quoteStale, onHover, onLatest, onPick }: {
+export function useChartEngine({ host, rsiHost, candles, symbol, source, identity, interval, timeframe, digits, kind, theme, grid, studies, quote, showBidAsk, quoteStale, onHover, onLatest, onPick }: {
     host: RefObject<HTMLDivElement | null>;
     rsiHost: RefObject<HTMLDivElement | null>;
     // Server (or preview) history for `identity`.
@@ -77,6 +60,7 @@ export function useChartEngine({ host, rsiHost, candles, symbol, source, identit
     source: CandleSource;
     identity: string;
     interval: number;
+    timeframe: string;
     digits: number;
     kind: 'candles' | 'line';
     theme: 'dark' | 'light';
@@ -99,19 +83,21 @@ export function useChartEngine({ host, rsiHost, candles, symbol, source, identit
     // Live bars outlive any one chart instance (switching candles/line keeps them). `identity` says
     // which symbol, timeframe and mode they belong to.
     const live = useRef<LiveCandles & { identity: string }>({ bars: [], newest: -Infinity, identity: '' });
-    const feed = useRef({ symbol, source, identity, interval });
-    feed.current = { symbol, source, identity, interval };
+    const feed = useRef({ symbol, source, identity, interval, timeframe });
+    feed.current = { symbol, source, identity, interval, timeframe };
     const redraw = useRef<(since: number) => void>(() => { });
     const ops = useRef<ChartOps | null>(null);
-    const palette = useRef<Palette>(FALLBACK_PALETTE[theme]);
+    const palette = useRef<ChartPalette>(FALLBACK_CHART_PALETTE[theme]);
     const rsiChart = useRef<IChartApi | null>(null);
     const lastIdentity = useRef('');
     useEffect(() => {
         if (!host.current || !rsiHost.current)
             return;
+        const colors = readChartPalette(theme);
+        palette.current = colors;
         // TradingChart supplies the visible TradingView link; the notice is in public/licenses.
         const api = createChart(host.current, {
-            layout: { attributionLogo: false, background: { type: ColorType.Solid, color: '#161616' }, textColor: '#a0a5a1', fontFamily: 'Inter, sans-serif', fontSize: CHART_FONT_SIZE },
+            layout: { attributionLogo: false, background: { type: ColorType.Solid, color: colors.background }, textColor: colors.muted, fontFamily: 'Inter, sans-serif', fontSize: CHART_FONT_SIZE },
             crosshair: { mode: CrosshairMode.Normal },
             rightPriceScale: { borderVisible: false, minimumWidth: 76, scaleMargins: { top: 0.15, bottom: 0.15 } },
             timeScale: { timeVisible: true, secondsVisible: false, rightOffset: 14, barSpacing: 8, minBarSpacing: 3, rightBarStaysOnScroll: true, borderVisible: false },
@@ -119,10 +105,10 @@ export function useChartEngine({ host, rsiHost, candles, symbol, source, identit
             kineticScroll: { mouse: true, touch: true },
         });
         const main = kind === 'candles'
-            ? api.addCandlestickSeries({ upColor: '#16a77a', downColor: '#ef5350', wickUpColor: '#16a77a', wickDownColor: '#ef5350', borderVisible: false })
-            : api.addLineSeries({ color: '#16a773', lineWidth: 2 });
+            ? api.addCandlestickSeries({ upColor: colors.up, downColor: colors.down, wickUpColor: colors.up, wickDownColor: colors.down, borderVisible: false })
+            : api.addLineSeries({ color: colors.up, lineWidth: 2 });
         const oscillator = createChart(rsiHost.current, {
-            layout: { attributionLogo: false, background: { type: ColorType.Solid, color: '#161616' }, textColor: '#a0a5a1', fontSize: 10 },
+            layout: { attributionLogo: false, background: { type: ColorType.Solid, color: colors.background }, textColor: colors.muted, fontFamily: 'Inter, sans-serif', fontSize: 10 },
             rightPriceScale: { borderVisible: false, minimumWidth: 76, scaleMargins: { top: 0.12, bottom: 0.12 } },
             timeScale: { visible: false },
             crosshair: { mode: CrosshairMode.Normal },
@@ -300,8 +286,8 @@ export function useChartEngine({ host, rsiHost, candles, symbol, source, identit
         } });
         // Solid bid and dashed ask from the executable quote, moved in place on every quote. Their axis
         // labels show the bid and ask prices; the series' own last-price line stands in while they are hidden.
-        const bidLine = main.createPriceLine({ price: 0, color: FALLBACK_PALETTE.dark.down, lineWidth: 1, lineStyle: LineStyle.Solid, lineVisible: false, axisLabelVisible: false, title: '' });
-        const askLine = main.createPriceLine({ price: 0, color: FALLBACK_PALETTE.dark.up, lineWidth: 1, lineStyle: LineStyle.Dashed, lineVisible: false, axisLabelVisible: false, title: '' });
+        const bidLine = main.createPriceLine({ price: 0, color: FALLBACK_CHART_PALETTE.dark.down, lineWidth: 1, lineStyle: LineStyle.Solid, lineVisible: false, axisLabelVisible: false, title: '' });
+        const askLine = main.createPriceLine({ price: 0, color: FALLBACK_CHART_PALETTE.dark.up, lineWidth: 1, lineStyle: LineStyle.Dashed, lineVisible: false, axisLabelVisible: false, title: '' });
         let quoteShown: boolean | undefined;
         const showQuote = (bid: number | undefined, ask: number | undefined, visible: boolean, stale: boolean) => {
             const on = visible && bid !== undefined && ask !== undefined && bid > 0 && ask >= bid;
@@ -317,12 +303,18 @@ export function useChartEngine({ host, rsiHost, candles, symbol, source, identit
         // the live bars (which may be newer); anything else starts again from the history alone.
         const load = (history: Candle[], identity: string) => {
             const state = live.current;
+            const previousFirst = state.bars[0]?.time;
+            const range = state.identity === identity ? api.timeScale().getVisibleLogicalRange() : null;
             if (state.identity === identity)
                 state.bars = reconcileBars(history, state.bars);
             else
                 Object.assign(state, { bars: history.slice(-MAX_BARS), newest: -Infinity, identity });
             dirtySince = null;
             setBars(state.bars);
+            if (range && previousFirst !== undefined) {
+                const added = state.bars.findIndex(bar => bar.time === previousFirst);
+                if (added > 0) api.timeScale().setVisibleLogicalRange({ from: range.from + added, to: range.to + added });
+            }
             refreshStudies();
             latestRef.current(state.bars[state.bars.length - 1]);
             changed();
@@ -341,8 +333,8 @@ export function useChartEngine({ host, rsiHost, candles, symbol, source, identit
                 if (disposed)
                     return;
                 const valid = levels.filter(l => Number.isFinite(l.price) && l.price > 0);
-                if (fittedPrices.length)
-                    fittedPrices = valid.filter(l => l.selected).map(l => l.price);
+                // Keep the explicit fitted range until the user refits or resets it.
+                // Refreshing trade lines must not add distant SL/TP prices to that range.
                 const ids = new Set(valid.map(l => l.id));
                 priceLines.forEach((line, id) => {
                     if (!ids.has(id)) {
@@ -352,7 +344,7 @@ export function useChartEngine({ host, rsiHost, candles, symbol, source, identit
                 });
                 valid.forEach(l => {
                     const nativeLabel = !l.kind && Boolean(l.title);
-                    const options = { price: l.price, color: l.color, title: nativeLabel ? l.title : '', lineWidth: 1 as const, lineStyle: l.kind === 'entry' && l.selected ? 0 as const : 2 as const, axisLabelVisible: nativeLabel };
+                    const options = { price: l.price, color: l.color, title: nativeLabel ? l.title : '', lineWidth: 1 as const, lineStyle: l.kind === 'entry' && !l.pending ? 0 as const : 2 as const, axisLabelVisible: nativeLabel };
                     const existing = priceLines.get(l.id);
                     if (existing)
                         existing.applyOptions(options);
@@ -428,7 +420,7 @@ export function useChartEngine({ host, rsiHost, candles, symbol, source, identit
         const state = live.current;
         if (state.identity !== current.identity)
             Object.assign(state, { bars: [], newest: -Infinity, identity: current.identity });
-        const since = applyTick(state, bid, timeMs / 1000, current.interval);
+        const since = applyTick(state, bid, timeMs / 1000, current.interval, MAX_BARS, time => candleStart(FEED_TIMEFRAMES[current.timeframe], time * 1000) / 1000);
         if (since !== undefined)
             redraw.current(since);
     }), [symbol, source]);
@@ -453,10 +445,15 @@ export function useChartEngine({ host, rsiHost, candles, symbol, source, identit
     useEffect(() => {
         if (!engine?.alive())
             return;
-        const dark = theme === 'dark', bg = dark ? '#161616' : '#ffffff', text = dark ? '#a0a5a1' : '#66717e', line = dark ? '#262a27' : '#edf0f3';
+        const dark = theme === 'dark', colors = readChartPalette(theme);
+        const { background: bg, muted: text, grid: line } = colors;
         for (const c of [engine.chart, rsiChart.current])
             c?.applyOptions({ layout: { background: { type: ColorType.Solid, color: bg }, textColor: text }, grid: { vertLines: { color: line, visible: grid }, horzLines: { color: line, visible: grid } }, crosshair: { vertLine: { width: 1, style: LineStyle.Dashed, color: text, labelBackgroundColor: dark ? '#424742' : '#66717e' }, horzLine: { width: 1, style: LineStyle.Dashed, color: text, labelBackgroundColor: dark ? '#424742' : '#66717e' } } });
-        palette.current = readPalette(theme);
+        if (engine.series.seriesType() === 'Candlestick')
+            (engine.series as ISeriesApi<'Candlestick'>).applyOptions({ upColor: colors.up, downColor: colors.down, wickUpColor: colors.up, wickDownColor: colors.down });
+        else
+            (engine.series as ISeriesApi<'Line'>).applyOptions({ color: colors.up });
+        palette.current = colors;
     }, [engine, theme, grid]);
     const bid = quote?.bid, ask = quote?.ask;
     useEffect(() => {

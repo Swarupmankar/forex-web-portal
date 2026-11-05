@@ -33,3 +33,15 @@ export function stepVolume(lots: number, spec: VolumeSpec, direction: 1 | -1): n
     return Number(Math.min(spec.max, Math.max(spec.min, snapped)).toFixed(decimals(spec.step)));
 }
 export const needsReview = (lots: number) => lots >= LARGE_ORDER_LOTS;
+
+// Only offer percentages that can actually be closed in 0.01-lot increments.
+// In a 0.02-lot position, 25% is impossible; rounding it to 50% is misleading.
+export function closeVolumePresets(open: number): { lots: number; label: string }[] {
+    if (validateVolume(open, PRACTICE_VOLUME)) return [];
+    return [0.25, 0.5, 1].flatMap(fraction => {
+        const amount = open * fraction;
+        if (validateVolume(amount, { min: 0.01, max: open, step: 0.01 })) return [];
+        const lots = Number(amount.toFixed(2));
+        return [{ lots, label: `${fraction === 1 ? 'All' : `${fraction * 100}%`} · ${lots.toFixed(2)} lots` }];
+    });
+}

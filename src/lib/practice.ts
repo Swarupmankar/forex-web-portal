@@ -1,5 +1,5 @@
 import type { TradeRequest } from './contracts';
-import { validateTrade } from './contracts';
+import { validateTrade, shiftPendingEntry } from './contracts';
 import type { PriceTick } from '../types/trading';
 export const PRACTICE_BALANCE = 10000;
 export const PRACTICE_CONTRACTS: Record<string, number> = { EURUSD: 100000, GBPUSD: 100000, AUDUSD: 100000, USDJPY: 100000, XAUUSD: 100, XAGUSD: 5000, BTCUSD: 1, ETHUSD: 1 };
@@ -50,7 +50,7 @@ export function placePractice(a: PracticeAccount, request: TradeRequest, quotes:
     if (!['BUY', 'SELL'].includes(request.orderType) || !['MARKET', 'LIMIT', 'STOP'].includes(request.executionType))
         throw new Error('Invalid order type.');
     const price = request.orderType === 'BUY' ? q.ask : q.bid;
-    const issue = validateTrade(request, price);
+    const issue = validateTrade(request, q);
     if (issue)
         throw new Error(issue);
     if (request.lotSize < 0.01 || request.lotSize > 100 || Math.abs(request.lotSize * 100 - Math.round(request.lotSize * 100)) > 0.00001)
@@ -190,12 +190,32 @@ export function settlePractice(a: PracticeAccount, quotes: Quotes, now = Date.no
     return next;
 }
 // Keeps all open and pending orders and the newest `max` finished ones, so storage can't grow without bound.
+export function practiceHistory(orders: PracticeOrder[]): PracticeOrder[] {
+    const time = (o: PracticeOrder) => Date.parse(o.closedAt ?? o.createdAt) || 0;
+    return orders.filter(o => !['OPEN', 'PENDING'].includes(o.status)).sort((a, b) => time(b) - time(a));
+}
 export function trimHistory(a: PracticeAccount, max = 1000): PracticeAccount {
-    let finished = 0;
-    const orders = a.orders.filter(o => o.status === 'OPEN' || o.status === 'PENDING' || ++finished <= max);
+    const keep = new Set(practiceHistory(a.orders).slice(0, max).map(o => o.id));
+    const orders = a.orders.filter(o => o.status === 'OPEN' || o.status === 'PENDING' || keep.has(o.id));
     return orders.length === a.orders.length ? a : { ...a, orders };
 }
 export type PracticeLevel = 'sl' | 'tp' | 'entry';
+/** Apply the management ticket's entry and protection changes as one validated update. */
+export function editPracticeOrder(a:PracticeAccount,id:string,changes:{sl?:number;tp?:number;limitPrice?:number},quotes:Quotes,now=Date.now()):PracticeAccount {
+    const order=a.orders.find(o=>o.id===id);
+    if(!order||!['OPEN','PENDING'].includes(order.status))throw new Error('This trade is no longer active.');
+    if(changes.limitPrice!==undefined&&order.status!=='PENDING')throw new Error('An executed entry cannot move.');
+    const quote=quotes[order.symbol];
+    if(!validQuote(quote,now))throw new Error('Waiting for a fresh practice quote.');
+    const next={...order,...changes,...(changes.limitPrice!==undefined&&{openPrice:changes.limitPrice})};
+    const issue=validateTrade({...next,executionType:order.status==='OPEN'?'MARKET':order.executionType},quote);
+    if(issue)throw new Error(issue);
+    if(order.status==='PENDING'&&changes.limitPrice!==undefined){
+        next.margin=requiredMargin(next,next.openPrice);
+        if(next.margin>practiceMetrics(a,quotes).freeMargin)throw new Error('Not enough virtual margin at this entry price.');
+    }
+    return {...a,orders:a.orders.map(o=>o.id===id?next:o)};
+}
 export function movePracticeLevel(a: PracticeAccount, id: string, level: PracticeLevel, price: number | undefined, quotes: Quotes, now = Date.now()): PracticeAccount {
     const order = a.orders.find(o => o.id === id);
     if (!order || !['OPEN', 'PENDING'].includes(order.status))
@@ -207,14 +227,17 @@ export function movePracticeLevel(a: PracticeAccount, id: string, level: Practic
     const q = quotes[order.symbol];
     if (!validQuote(q, now))
         throw new Error('Waiting for a fresh practice quote.');
-    const revised = { ...order, limitPrice: price };
+    if (price === undefined || !Number.isFinite(price) || price <= 0)
+        throw new Error('A valid entry price is required.');
+    const changes = shiftPendingEntry(order.openPrice, price, order);
+    const revised = { ...order, ...changes };
     const invalid = validateTrade(revised, order.orderType === 'BUY' ? q.ask : q.bid);
     if (invalid)
         throw new Error(invalid);
     const margin = requiredMargin(order, price!);
     if (margin > practiceMetrics(a, quotes).freeMargin)
         throw new Error('Not enough virtual margin at this entry price.');
-    return { ...a, orders: a.orders.map(o => o.id === id ? { ...o, limitPrice: price, openPrice: price!, margin } : o) };
+    return { ...a, orders: a.orders.map(o => o.id === id ? { ...o, ...changes, openPrice: price, margin } : o) };
 }
 export function pendingAtPrice(side: 'BUY' | 'SELL', price: number, reference: number): 'LIMIT' | 'STOP' {
     return (side === 'BUY' ? price < reference : price > reference) ? 'LIMIT' : 'STOP';

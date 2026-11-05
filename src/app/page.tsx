@@ -1,10 +1,18 @@
 "use client";
-import { useEffect } from "react";
+import { useSessionServices } from "@/store/useSessionServices";
+import { AccountSummaryBar } from "@/components/terminal/AccountSummaryBar";
+import { ActivityDivider } from "@/components/terminal/ActivityDivider";
+import { useTicketVisibility } from '@/hooks/useTicketVisibility';
+import { OrderReceiptTracker } from "@/components/terminal/OrderReceipt";
+import { InstrumentPicker } from "@/components/terminal/InstrumentPicker";
+import { useEffect, useRef, type CSSProperties } from "react";
+import { PanelRightClose } from 'lucide-react';
 import { Header } from "@/components/Header/Header";
 import { MarketWatch } from "@/components/MarketWatch/MarketWatch";
 import { TradingChart } from "@/components/Chart/TradingChart";
 import { PositionsTable } from "@/components/PositionsTable/PositionsTable";
-import { OrderEntry } from "@/components/OrderEntry/OrderEntry";
+import { TradingTicket } from "@/components/terminal/TradeManagementTicket";
+import {useTradeManagement} from '@/store/useTradeManagement';
 import { FooterBar } from "@/components/Footer/FooterBar";
 import { DepositModal } from "@/components/DepositModal/DepositModal";
 import { WorkspaceTools } from "@/components/terminal/WorkspaceTools";
@@ -32,32 +40,56 @@ function AccountHeader() {
   const m = useAccountMetrics();
   return <Header balance={m.balance} equity={m.equity} freeMargin={m.freeMargin} loading={m.loading} error={m.error} onRefresh={m.refetch} />;
 }
-function AccountFooter() {
-  // The footer instance also keeps the saved account details in sync with the server.
-  const m = useAccountMetrics({ syncAccount: true });
-  return <FooterBar balance={m.balance} equity={m.equity} margin={m.margin} freeMargin={m.freeMargin} marginLevel={m.marginLevel} />;
-}
-
 // The page subscribes only to layout state; ticks and account figures re-render the components that show them.
 export default function TerminalPage() {
   const generation = useAccountStore(s => s.generation);
   const practice = usePracticeStore(s => s.mode === "practice");
   const access = useUIStore(s => s.access);
   const symbol = useUIStore(s => s.activeSymbol);
-  const panel = useWorkspaceStore((s) => s.panel),
-    focus = useWorkspaceStore((s) => s.focusChart),
-    activityExpanded = useWorkspaceStore(s => s.activityExpanded),
-    alerts = useWorkspaceStore((s) => s.alerts);
+  const panel = useWorkspaceStore(s => s.panel);
+  const tab = useUIStore(s => s.bottomTab);
+  const activityHeight = useWorkspaceStore(s => s.activityHeight);
+  const activityExpanded = useWorkspaceStore(s => s.activityExpanded);
+  const activityOnly = useWorkspaceStore(s => s.activityMaximized);
+  const marketsOpen = useWorkspaceStore(s => s.marketsOpen);
+  const {visible: ticketOpen, compact} = useTicketVisibility();
+  const draftVersion = useUIStore(s => s.orderDraftVersion);
+  const managementKey=useTradeManagement(s=>s.selection?.key);
+  const density = useWorkspaceStore(s => s.density);
+  const focus = useWorkspaceStore(s => s.focusChart);
+  const alerts = useWorkspaceStore(s => s.alerts);
+  const hasMounted = useRef(false);
   useEffect(() => {
-    // A portal Trade link, or this tab's saved session; with neither, back to the portal login.
+    if (!hasMounted.current) { hasMounted.current = true; return; }
+    // Small windows stack the same panels; actions reveal their target without replacing the page.
+    if (!window.matchMedia('(max-width: 759px)').matches || panel === 'trade') return;
+    const target = panel === 'activity' ? 'workspace-activity' : panel === 'chart' ? 'workspace-chart' : 'workspace-watchlist';
+    const frame = requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({ block: 'nearest' }));
+    return () => cancelAnimationFrame(frame);
+  }, [panel, tab, draftVersion, managementKey, ticketOpen, activityExpanded, marketsOpen]);
+  useEffect(() => {
+    // A portal Trade link or saved session; otherwise show the account-entry screen.
     void startTerminalSession();
   }, []);
   useEffect(() => {
     if (practice || access !== "granted") return;
     // Order fills and venue rejections arrive here; it is opened before any order can be placed.
-    mobileSocketService.start();
-    initPriceSocket();
+    let cancelled = false;
+    const connect = async () => {
+      if (await useSessionServices.getState().load() && !cancelled) {
+        mobileSocketService.start();
+        initPriceSocket();
+      }
+    };
+    void connect();
+    const retry = window.setInterval(() => {
+      const service = useSessionServices.getState();
+      if (!service.binding && !service.loading) void connect();
+    }, 15000);
     return () => {
+      cancelled = true;
+      window.clearInterval(retry);
+      useSessionServices.getState().clear();
       mobileSocketService.stop();
       stopPriceSocket();
     };
@@ -77,21 +109,32 @@ export default function TerminalPage() {
   const resetKey = `${practice}:${generation}:${symbol}`;
   if (access !== "granted") return <SessionGate />;
   return (
-    <div
-      className={`terminal-app ${focus ? "chart-focused" : ""} ${activityExpanded ? "activity-expanded" : "activity-collapsed"}`}
-      data-panel={panel}
-    >
+    <div data-density={density} className={`terminal-app terminal-desktop terminal-single-page ${focus ? 'desktop-chart-focused' : ''}`}>
       <AccountHeader />
       <TradingStatusBanner />
-      <main key={`${practice}:${generation}`} className="terminal-workspace" aria-label="Trading workspace">
-        <PanelBoundary name="watchlist" className="markets-panel" resetKey={resetKey}><MarketWatch /></PanelBoundary>
-        <PanelBoundary name="chart" className="chart-panel" resetKey={resetKey}><TradingChart /></PanelBoundary>
-        <PanelBoundary name="order ticket" className="order-panel" resetKey={resetKey}><OrderEntry /></PanelBoundary>
-        <PanelBoundary name="activity panel" className="activity-panel" resetKey={resetKey}><PositionsTable /></PanelBoundary>
+      <OrderReceiptTracker/>
+      <main key={`${practice}:${generation}`} className="unified-workspace" data-activity-only={activityOnly} data-ticket-open={ticketOpen} data-markets-open={marketsOpen} data-activity-expanded={activityExpanded} style={{ '--activity-height': `${activityHeight}px` } as CSSProperties} aria-label="Trading workspace">
+        <section id="workspace-watchlist" className="workspace-watchlist" aria-label="Watchlist" hidden={!marketsOpen || activityOnly}>
+          <PanelBoundary name="watchlist" className="markets-panel" resetKey={resetKey}><MarketWatch /></PanelBoundary>
+        </section>
+        <section id="workspace-chart" className="workspace-chart" aria-label="Price chart" hidden={activityOnly}>
+          <PanelBoundary name="chart" className="chart-panel" resetKey={resetKey}><TradingChart /></PanelBoundary>
+        </section>
+        {/* Keep the ticket mounted while tucked away: drafts, confirmations and reconciliation stay alive. */}
+        <section id="workspace-ticket" className="workspace-ticket" data-floating={compact} aria-label="Order ticket" hidden={!ticketOpen || activityOnly}>
+          <div className="ticket-visibility-control"><button className="text-button" onClick={() => { useWorkspaceStore.getState().closeOrderTicket(); document.querySelector<HTMLButtonElement>('.workspace-ticket-toggle')?.focus(); }}><PanelRightClose />Hide ticket</button></div>
+          <PanelBoundary name="order ticket" className="order-panel" resetKey={resetKey}><TradingTicket /></PanelBoundary>
+        </section>
+        <ActivityDivider />
+        <section id="workspace-activity" className="workspace-activity" aria-label="Positions and history">
+          <PanelBoundary name="activity panel" className="activity-panel" resetKey={resetKey}><PositionsTable docked /></PanelBoundary>
+        </section>
       </main>
-      <AccountFooter />
+      <AccountSummaryBar />
+      <FooterBar />
       <PracticeSession />
       <WorkspaceTools />
+      <InstrumentPicker />
       <DepositModal />
     </div>
   );

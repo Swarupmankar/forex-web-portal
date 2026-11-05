@@ -1,3 +1,4 @@
+import { recordServerTime } from "@/lib/serverClock";
 import { create } from "zustand";
 export type TradingMode = "enabled" | "close-only" | "halted";
 export type TradingStatus = {
@@ -23,6 +24,7 @@ export const useTradingStatus = create<State>((set) => ({
       const response = await fetch("/api/trading/status", { cache: "no-store" });
       const data = await response.json();
       if (!response.ok || !MODES.has(data?.mode)) throw new Error("Unexpected status response");
+      if (Number.isFinite(Number(data.serverTime))) recordServerTime(Number(data.serverTime));
       set({
         status: {
           mode: data.mode,

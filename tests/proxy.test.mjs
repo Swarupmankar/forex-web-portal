@@ -153,10 +153,10 @@ test("exit-order schema", () => {
   rejects(exit({ orderId: 12, exitLotSize: "1", all: true }), /Unexpected field: all/);
 });
 
-test("modify schema: cancelOrder required, 0 removes a level", () => {
+test("modify schema: cancelOrder required, existing levels cannot be removed", () => {
   const modify = (body) => validateBody(MODIFY, "PUT", body);
   assert.equal(modify({ cancelOrder: true }).ok, true);
-  assert.equal(modify({ cancelOrder: false, sl: "0", tp: "0" }).ok, true);
+  assert.equal(modify({ cancelOrder: false, sl: "0", tp: "0" }).ok, false);
   assert.equal(modify({ cancelOrder: false, sl: "1.05", tp: "1.2" }).ok, true);
   rejects(modify({}), /cancelOrder/);
   rejects(modify({ cancelOrder: "true" }), /cancelOrder/);
